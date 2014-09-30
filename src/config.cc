@@ -50,11 +50,7 @@ void libmasscan::Config(Handle<Object> obj) {
 	HandleScope scope;
 	libmasscan ms;
   struct Masscan masscan[1];
-  //v8::Persistent<struct Masscan> masscan[1];
 
-  /*
-   * Initialize those defaults that aren't zero
-   */
   memset(masscan, 0, sizeof(*masscan));
   masscan->blackrock_rounds = 4;
   masscan->output.is_show_open = 1; /* default: show syn-ack, not rst */
@@ -67,8 +63,7 @@ void libmasscan::Config(Handle<Object> obj) {
   masscan->min_packet_size = 60;
   masscan->payloads = payloads_create();
   strcpy_s(masscan->output.rotate.directory,
-           sizeof(masscan->output.rotate.directory),
-           ".");
+           sizeof(masscan->output.rotate.directory), ".");
   masscan->is_capture_cert = 1;
 
   /* Disable stdout/stderr */
@@ -77,7 +72,10 @@ void libmasscan::Config(Handle<Object> obj) {
 	ms.ConfigIface(obj, masscan);
 //	ms.ConfigIpaddr(obj);
 //	ms.ConfigHwaddr(obj);
+	ms.ConfigExcludeRange(obj, masscan);
+LOG(0, "Exclude: %d\n", rangelist_count(&masscan->exclude_ip));
 	ms.ConfigRange(obj, masscan);
+LOG(0, "Targets: %d\n", rangelist_count(&masscan->targets));
 //	ms.ConfigBandwidth(obj);
 //	ms.ConfigBlacklist(obj);
 
@@ -121,8 +119,6 @@ void libmasscan::ConfigIpaddr(Handle<Object> obj) {
 	if (obj->Has(v8::String::NewSymbol("ipaddr"))) {
 		Handle<v8::Value> value = obj->Get(String::New("ipaddr"));
 
-	} else {
-
 	}
 }
 
@@ -132,8 +128,6 @@ void libmasscan::ConfigHwaddr(Handle<Object> obj) {
 
 	if (obj->Has(v8::String::NewSymbol("mac"))) {
 		Handle<v8::Value> value = obj->Get(String::New("mac"));
-
-	} else {
 
 	}
 }
@@ -166,6 +160,44 @@ void libmasscan::ConfigRange(Handle<Object> obj, Masscan masscan[1]) {
       rangelist_add_range(&masscan->targets, range.begin, range.end);
     }
 	}
+}
+
+void libmasscan::ConfigExcludeRange(Handle<Object> obj, Masscan masscan[1]) {
+	HandleScope scope;
+  struct Range range;
+
+	if (obj->Has(v8::String::NewSymbol("exclude"))) {
+    Handle<v8::Array> value =
+      v8::Local<v8::Array>::Cast(obj->Get(String::New("exclude")));
+
+    if (!value->IsArray()) {
+      /* Send to exception handler callback */
+    }
+
+    for (uint32_t i = 0; i < value->Length(); ++i) {
+      const Local<Value> item = value->Get(i);
+
+      unsigned offset = 0;
+      unsigned max_offset = (unsigned)
+        strlen(*v8::String::Utf8Value(item->ToString()));
+
+      range = range_parse_ipv4(*v8::String::Utf8Value(item->ToString()),
+                                                      &offset, max_offset);
+      if (range.end < range.begin) {
+        /* Send to exception handler callback */
+      }
+
+      rangelist_add_range(&masscan->exclude_ip, range.begin, range.end);
+    }
+	} else {
+    range = range_parse_ipv4("0.0.0.0/0", 0, strlen("0.0.0.0/0"));
+
+    if (range.end < range.begin) {
+      /* Send to exception handler callback */
+    }
+
+    rangelist_add_range(&masscan->exclude_ip, range.begin, range.end);
+  }
 }
 
 void libmasscan::ConfigBlacklist(Handle<Object> obj) {

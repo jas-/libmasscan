@@ -21,6 +21,7 @@ class libmasscan : public node::ObjectWrap {
 		void ConfigIpaddr(v8::Handle<v8::Object> obj);
 		void ConfigHwaddr(v8::Handle<v8::Object> obj);
 		void ConfigRange(v8::Handle<v8::Object> obj, Masscan masscan[1]);
+		void ConfigExcludeRange(v8::Handle<v8::Object> obj, Masscan masscan[1]);
 		void ConfigBlacklist(v8::Handle<v8::Object> obj);
 		void ConfigShards(v8::Handle<v8::Object> obj);
 		void ConfigShardTotal(v8::Handle<v8::Object> obj);
