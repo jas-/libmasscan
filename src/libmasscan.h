@@ -5,6 +5,7 @@
 #include <string>
 
 extern "C" {
+  #include "masscan/src/masscan.h"
 
 }
 
@@ -13,31 +14,20 @@ class libmasscan : public node::ObjectWrap {
 		static void Init(v8::Handle<v8::Object> exports);
 
 	protected:
-
-		int max(int a, int b);
- 		//int parse_mac(macaddr_t *out, char *in);
-    static void* start_recv(void *arg);
-    static void* start_send(void *arg);
-    static void set_cpu(void);
-    static void drop_privs();
-    static void split_string(char* in, int *len, char***results);
-    char* strncat(char *dest, const char *src, size_t n);
-
 		void Config(v8::Handle<v8::Object> obj);
+		void ConfigFile(v8::Handle<v8::Object> obj);
 		void ConfigLoglevel(v8::Handle<v8::Object> obj);
-		void ConfigIface(v8::Handle<v8::Object> obj);
+		void ConfigIface(v8::Handle<v8::Object> obj, Masscan masscan[1]);
 		void ConfigIpaddr(v8::Handle<v8::Object> obj);
 		void ConfigHwaddr(v8::Handle<v8::Object> obj);
-		void ConfigRange(v8::Handle<v8::Object> obj);
+		void ConfigRange(v8::Handle<v8::Object> obj, Masscan masscan[1]);
 		void ConfigBlacklist(v8::Handle<v8::Object> obj);
-		void ConfigWhitelist(v8::Handle<v8::Object> obj);
 		void ConfigShards(v8::Handle<v8::Object> obj);
 		void ConfigShardTotal(v8::Handle<v8::Object> obj);
 		void ConfigProbeModule(v8::Handle<v8::Object> obj);
 		void ConfigOutputModule(v8::Handle<v8::Object> obj);
     void ConfigBandwidth(v8::Handle<v8::Object> obj);
     void ConfigThreads(v8::Handle<v8::Object> obj);
-		void ConfigWhiteBlackLists(void);
 		void ConfigTargets(void);
 		void ConfigCores(void);
 		void ConfigSeed(void);
