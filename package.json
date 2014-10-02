@@ -1,0 +1,31 @@
+{
+  "name": "libmasscan",
+  "version": "0.0.1",
+  "description": "masscan bindings for node.js",
+  "author": "Jason Gerfen <jason.gerfen@gmail.com>",
+  "keywords": [
+    "masscan",
+    "masscan network scanner"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jas-/libmasscan.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jas-/libmasscan/issues"
+  },
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "start": "node index.js",
+    "test": "make test"
+  },
+  "devDependencies": {
+    "mocha": "~1.17.0",
+    "chai": "~1.8.1"
+  },
+  "license": "AGPv3",
+  "engine": "node >= v0.10.30",
+  "dependencies": {
+    "nan": "^1.3.0"
+  }
+}
