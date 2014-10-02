@@ -8,7 +8,8 @@ using namespace v8;
 
 Handle<Value> libmasscan::LibMasscan(const Arguments& args) {
 	HandleScope scope;
-	libmasscan masscan;
+	libmasscan ms;
+	struct Masscan masscan[1];
 
 	Local<Function> callback;
 	Local<Object> obj;
@@ -36,10 +37,10 @@ Handle<Value> libmasscan::LibMasscan(const Arguments& args) {
 
 	if (args[0]->IsObject()) {
     obj = args[0]->ToObject();
-    masscan.Config(obj);
+    ms.Config(obj, masscan);
   }
 
-//  masscan.Threads();
+  ms.Scan(masscan);
 
   const unsigned argc = 2;
   Local<Value> argv[argc] = {

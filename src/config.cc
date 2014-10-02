@@ -46,10 +46,9 @@ extern "C" {
 using namespace node;
 using namespace v8;
 
-void libmasscan::Config(Handle<Object> obj) {
+void libmasscan::Config(Handle<Object> obj, Masscan masscan[1]) {
 	HandleScope scope;
 	libmasscan ms;
-  struct Masscan masscan[1];
 
   memset(masscan, 0, sizeof(*masscan));
   masscan->blackrock_rounds = 4;
@@ -68,14 +67,20 @@ void libmasscan::Config(Handle<Object> obj) {
 
   /* Disable stdout/stderr */
 
+//	ms.ConfigSummary(obj);
 //	ms.ConfigFile(obj);
 	ms.ConfigIface(obj, masscan);
 //	ms.ConfigIpaddr(obj);
 //	ms.ConfigHwaddr(obj);
-	ms.ConfigExcludeRange(obj, masscan);
-LOG(0, "Exclude: %d\n", rangelist_count(&masscan->exclude_ip));
+
 	ms.ConfigRange(obj, masscan);
-LOG(0, "Targets: %d\n", rangelist_count(&masscan->targets));
+  ms.ConfigPorts(obj, masscan);
+	ms.ConfigExcludeRange(obj, masscan);
+  ms.ConfigExcludePorts(obj, masscan);
+
+  rangelist_exclude(&masscan->targets, &masscan->exclude_ip);
+  rangelist_exclude(&masscan->ports, &masscan->exclude_port);
+
 //	ms.ConfigBandwidth(obj);
 //	ms.ConfigBlacklist(obj);
 
@@ -162,6 +167,20 @@ void libmasscan::ConfigRange(Handle<Object> obj, Masscan masscan[1]) {
 	}
 }
 
+void libmasscan::ConfigPorts(Handle<Object> obj, Masscan masscan[1]) {
+	HandleScope scope;
+  unsigned is_error = 0;
+
+	if (obj->Has(v8::String::NewSymbol("ports"))) {
+		Handle<v8::Value> value = obj->Get(String::New("ports"));
+    rangelist_parse_ports(&masscan->ports,
+                          *v8::String::Utf8Value(value->ToString()), &is_error);
+	} else {
+    rangelist_parse_ports(&masscan->ports, "0", &is_error);
+  }
+
+}
+
 void libmasscan::ConfigExcludeRange(Handle<Object> obj, Masscan masscan[1]) {
 	HandleScope scope;
   struct Range range;
@@ -198,6 +217,19 @@ void libmasscan::ConfigExcludeRange(Handle<Object> obj, Masscan masscan[1]) {
 
     rangelist_add_range(&masscan->exclude_ip, range.begin, range.end);
   }
+}
+
+void libmasscan::ConfigExcludePorts(Handle<Object> obj, Masscan masscan[1]) {
+	HandleScope scope;
+
+	if (obj->Has(v8::String::NewSymbol("excludeports"))) {
+		Handle<v8::Value> value = obj->Get(String::New("excludeports"));
+      unsigned is_error = 0;
+      rangelist_parse_ports(&masscan->exclude_port,
+                            *v8::String::Utf8Value(value->ToString()),
+                            &is_error);
+	}
+
 }
 
 void libmasscan::ConfigBlacklist(Handle<Object> obj) {
