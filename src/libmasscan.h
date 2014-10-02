@@ -25,17 +25,7 @@ class libmasscan : public node::ObjectWrap {
 		void ConfigExcludeRange(v8::Handle<v8::Object> obj, Masscan masscan[1]);
 		void ConfigExcludePorts(v8::Handle<v8::Object> obj, Masscan masscan[1]);
 		void ConfigBlacklist(v8::Handle<v8::Object> obj);
-		void ConfigShards(v8::Handle<v8::Object> obj);
-		void ConfigShardTotal(v8::Handle<v8::Object> obj);
-		void ConfigProbeModule(v8::Handle<v8::Object> obj);
-		void ConfigOutputModule(v8::Handle<v8::Object> obj);
     void ConfigBandwidth(v8::Handle<v8::Object> obj);
-
-		void ConfigTargets(void);
-		void ConfigCores(void);
-		void ConfigSeed(void);
-
-    void Threads(void);
 
     v8::Handle<v8::Value> Summary(void);
     v8::Handle<v8::Value> Scan(struct Masscan *masscan);
