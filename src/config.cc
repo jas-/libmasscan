@@ -41,6 +41,51 @@ extern "C" {
       p++;
     return (unsigned)parseInt(p);
   }
+
+  static unsigned
+  hexval(char c)
+  {
+    if ('0' <= c && c <= '9')
+        return (unsigned)(c - '0');
+    if ('a' <= c && c <= 'f')
+        return (unsigned)(c - 'a' + 10);
+    if ('A' <= c && c <= 'F')
+        return (unsigned)(c - 'A' + 10);
+    return 0xFF;
+  }
+
+  static int
+  parse_mac_address(const char *text, unsigned char *mac)
+  {
+    unsigned i;
+
+    for (i=0; i<6; i++) {
+        unsigned x;
+        char c;
+
+        while (isspace(*text & 0xFF) && ispunct(*text & 0xFF))
+            text++;
+
+        c = *text;
+        if (!isxdigit(c&0xFF))
+            return -1;
+        x = hexval(c)<<4;
+        text++;
+
+        c = *text;
+        if (!isxdigit(c&0xFF))
+            return -1;
+        x |= hexval(c);
+        text++;
+
+        mac[i] = (unsigned char)x;
+
+        if (ispunct(*text & 0xFF))
+            text++;
+    }
+
+    return 0;
+  }
 }
 
 using namespace node;
@@ -141,7 +186,20 @@ void libmasscan::ConfigGatewayMac(Handle<Object> obj, Masscan masscan[1]) {
 
 	if (obj->Has(v8::String::NewSymbol("gateway"))) {
 		Handle<v8::Value> value = obj->Get(String::New("gateway"));
+    unsigned index = ARRAY(*v8::String::Utf8Value(value->ToString()));
 
+    if (index >= 65536) {
+      /* Send error to callback */
+    }
+
+    unsigned char mac[6];
+
+    if (parse_mac_address(*v8::String::Utf8Value(value->ToString()),
+                          mac) != 0) {
+      /* Send error to callback */
+    }
+
+    memcpy(masscan->nic[index].router_mac, mac, 6);
 	}
 }
 
