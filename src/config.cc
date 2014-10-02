@@ -118,7 +118,16 @@ void libmasscan::ConfigIface(Handle<Object> obj, Masscan masscan[1]) {
 	}
 }
 
-void libmasscan::ConfigIpaddr(Handle<Object> obj) {
+void libmasscan::ConfigHwaddr(Handle<Object> obj, Masscan masscan[1]) {
+	HandleScope scope;
+
+	if (obj->Has(v8::String::NewSymbol("hwaddr"))) {
+		Handle<v8::Value> value = obj->Get(String::New("hwaddr"));
+
+	}
+}
+
+void libmasscan::ConfigIpaddr(Handle<Object> obj, Masscan masscan[1]) {
 	HandleScope scope;
 
 	if (obj->Has(v8::String::NewSymbol("ipaddr"))) {
@@ -127,12 +136,11 @@ void libmasscan::ConfigIpaddr(Handle<Object> obj) {
 	}
 }
 
-void libmasscan::ConfigHwaddr(Handle<Object> obj) {
+void libmasscan::ConfigGatewayMac(Handle<Object> obj, Masscan masscan[1]) {
 	HandleScope scope;
-	libmasscan masscan;
 
-	if (obj->Has(v8::String::NewSymbol("mac"))) {
-		Handle<v8::Value> value = obj->Get(String::New("mac"));
+	if (obj->Has(v8::String::NewSymbol("gateway"))) {
+		Handle<v8::Value> value = obj->Get(String::New("gateway"));
 
 	}
 }
@@ -240,4 +248,3 @@ void libmasscan::ConfigBlacklist(Handle<Object> obj) {
 
 	}
 }
-

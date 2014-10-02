@@ -18,8 +18,9 @@ class libmasscan : public node::ObjectWrap {
 		void ConfigFile(v8::Handle<v8::Object> obj);
 		void ConfigLoglevel(v8::Handle<v8::Object> obj);
 		void ConfigIface(v8::Handle<v8::Object> obj, Masscan masscan[1]);
-		void ConfigIpaddr(v8::Handle<v8::Object> obj);
-		void ConfigHwaddr(v8::Handle<v8::Object> obj);
+		void ConfigHwaddr(v8::Handle<v8::Object> obj, Masscan masscan[1]);
+		void ConfigIpaddr(v8::Handle<v8::Object> obj, Masscan masscan[1]);
+		void ConfigGatewayMac(v8::Handle<v8::Object> obj, Masscan masscan[1]);
 		void ConfigRange(v8::Handle<v8::Object> obj, Masscan masscan[1]);
 		void ConfigPorts(v8::Handle<v8::Object> obj, Masscan masscan[1]);
 		void ConfigExcludeRange(v8::Handle<v8::Object> obj, Masscan masscan[1]);
