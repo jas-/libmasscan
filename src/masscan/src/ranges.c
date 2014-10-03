@@ -400,13 +400,13 @@ rangelist_exclude(  struct RangeList *targets,
 {
     uint64_t count = 0;
     unsigned i;
-    
+
     for (i=0; i<excludes->count; i++) {
         struct Range range = excludes->list[i];
         count += range.end - range.begin + 1;
         rangelist_remove_range(targets, range.begin, range.end);
     }
-    
+
     return count;
 }
 

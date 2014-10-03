@@ -1,7 +1,9 @@
 # libmasscan
 Native extension provding an interface to the [masscan](https://github.com/robertdavidgraham/masscan) tool from node.js
 
-# Example use
+Not quite fit for consumption
+
+## Example use
 ```javascript
 var lib = require('../build/Release/masscan.node')
   , opts = {

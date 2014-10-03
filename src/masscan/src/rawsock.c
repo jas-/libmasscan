@@ -78,7 +78,7 @@ int pcap_setdirection(pcap_t *pcap, pcap_direction_t direction)
     if (real_setdirection == 0) {
         HMODULE h = LoadLibraryA("wpcap.dll");
         if (h == NULL) {
-            fprintf(stderr, "couldn't load wpcap.dll: %u\n", 
+            fprintf(stderr, "couldn't load wpcap.dll: %u\n",
                                 (unsigned)GetLastError());
             return -1;
         }
@@ -86,7 +86,7 @@ int pcap_setdirection(pcap_t *pcap, pcap_direction_t direction)
         real_setdirection = (int (*)(pcap_t*,pcap_direction_t))
                             GetProcAddress(h, "pcap_setdirection");
         if (real_setdirection == 0) {
-            fprintf(stderr, "couldn't find pcap_setdirection(): %u\n", 
+            fprintf(stderr, "couldn't find pcap_setdirection(): %u\n",
                                 (unsigned)GetLastError());
             return -1;
         }
@@ -190,7 +190,7 @@ rawsock_init(void)
 
         }
     } else {
-        printf("GetAdaptersInfo failed with error: %u\n", 
+        printf("GetAdaptersInfo failed with error: %u\n",
                                                     (unsigned)dwRetVal);
 
     }
@@ -352,7 +352,7 @@ int rawsock_recv_packet(
     unsigned *usecs,
     const unsigned char **packet)
 {
-    
+
     if (adapter->ring) {
         /* This is for doing libpfring instead of libpcap */
         struct pfring_pkthdr hdr;
@@ -418,7 +418,7 @@ rawsock_send_probe(
      */
     template_set_target(tmplset, ip_them, port_them, ip_me, port_me, seqno,
         px, sizeof(px), &packet_length);
-    
+
     /*
      * Send it
      */
@@ -633,7 +633,7 @@ rawsock_init_adapter(const char *adapter_name,
 
     adapter->is_vlan = is_vlan;
     adapter->vlan_id = vlan_id;
-    
+
     if (is_offline)
         return adapter;
 
@@ -722,7 +722,7 @@ rawsock_init_adapter(const char *adapter_name,
         return adapter;
     }
 
-    
+
     /*----------------------------------------------------------------
      * PORTABILITY: LIBPCAP
      *
@@ -731,14 +731,14 @@ rawsock_init_adapter(const char *adapter_name,
     {
         LOG(1, "pcap: %s\n", pcap_lib_version());
         LOG(2, "pcap:'%s': opening...\n", adapter_name);
-     
+
         adapter->pcap = pcap_open_live(
                     adapter_name,           /* interface name */
                     65536,                  /* max packet size */
                     8,                      /* promiscuous mode */
                     1000,                   /* read timeout in milliseconds */
                     errbuf);
-        
+
         if (adapter->pcap == NULL) {
             LOG(0, "FAIL: %s\n", errbuf);
             if (strstr(errbuf, "perm")) {
@@ -755,7 +755,7 @@ rawsock_init_adapter(const char *adapter_name,
             return 0;
         } else
             LOG(1, "pcap:'%s': successfully opened\n", adapter_name);
-        
+
 
         /* Figure out the link-type. We suport Ethernet and IP */
         {
@@ -774,7 +774,7 @@ rawsock_init_adapter(const char *adapter_name,
 
             }
         }
-        
+
 
         /* Set any BPF filters the user might've set */
         if (bpf_filter) {
@@ -800,7 +800,7 @@ rawsock_init_adapter(const char *adapter_name,
             }
         }
 
-        
+
 
     }
 
@@ -944,4 +944,3 @@ rawsock_selftest()
 
     return 0;
 }
-

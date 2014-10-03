@@ -116,7 +116,7 @@ void libmasscan::Config(Handle<Object> obj, Masscan masscan[1]) {
 //	ms.ConfigFile(obj);
 	ms.ConfigIface(obj, masscan);
 //	ms.ConfigIpaddr(obj);
-//	ms.ConfigHwaddr(obj);
+	ms.ConfigGatewayMac(obj, masscan);
 
 	ms.ConfigRange(obj, masscan);
   ms.ConfigPorts(obj, masscan);
@@ -189,14 +189,15 @@ void libmasscan::ConfigGatewayMac(Handle<Object> obj, Masscan masscan[1]) {
     unsigned index = ARRAY(*v8::String::Utf8Value(value->ToString()));
 
     if (index >= 65536) {
-      /* Send error to callback */
+      LOG(0, "Gateway is invalid 1");
+      exit(1);
     }
 
     unsigned char mac[6];
-
     if (parse_mac_address(*v8::String::Utf8Value(value->ToString()),
                           mac) != 0) {
-      /* Send error to callback */
+      LOG(0, "Gateway is invalid 2");
+      exit(1);
     }
 
     memcpy(masscan->nic[index].router_mac, mac, 6);
@@ -212,7 +213,8 @@ void libmasscan::ConfigRange(Handle<Object> obj, Masscan masscan[1]) {
       v8::Local<v8::Array>::Cast(obj->Get(String::New("range")));
 
     if (!value->IsArray()) {
-      /* Send to exception handler callback */
+      LOG(0, "Array expected for range param");
+      exit(1);
     }
 
     for (uint32_t i = 0; i < value->Length(); ++i) {
@@ -225,7 +227,8 @@ void libmasscan::ConfigRange(Handle<Object> obj, Masscan masscan[1]) {
       range = range_parse_ipv4(*v8::String::Utf8Value(item->ToString()),
                                                       &offset, max_offset);
       if (range.end < range.begin) {
-        /* Send to exception handler callback */
+        LOG(0, "Range end cannot be greater than range begin");
+        exit(1);
       }
 
       rangelist_add_range(&masscan->targets, range.begin, range.end);
@@ -256,7 +259,8 @@ void libmasscan::ConfigExcludeRange(Handle<Object> obj, Masscan masscan[1]) {
       v8::Local<v8::Array>::Cast(obj->Get(String::New("exclude")));
 
     if (!value->IsArray()) {
-      /* Send to exception handler callback */
+      LOG(0, "Array expected for exclude param");
+      exit(1);
     }
 
     for (uint32_t i = 0; i < value->Length(); ++i) {
@@ -269,7 +273,8 @@ void libmasscan::ConfigExcludeRange(Handle<Object> obj, Masscan masscan[1]) {
       range = range_parse_ipv4(*v8::String::Utf8Value(item->ToString()),
                                                       &offset, max_offset);
       if (range.end < range.begin) {
-        /* Send to exception handler callback */
+        LOG(0, "range end cannot be greater than range end");
+        exit(1);
       }
 
       rangelist_add_range(&masscan->exclude_ip, range.begin, range.end);
@@ -278,7 +283,8 @@ void libmasscan::ConfigExcludeRange(Handle<Object> obj, Masscan masscan[1]) {
     range = range_parse_ipv4("0.0.0.0/0", 0, strlen("0.0.0.0/0"));
 
     if (range.end < range.begin) {
-      /* Send to exception handler callback */
+      LOG(0, "range end cannot be greater than range end");
+      exit(1);
     }
 
     rangelist_add_range(&masscan->exclude_ip, range.begin, range.end);

@@ -67,7 +67,7 @@ print_version()
     const char *compiler_version = "unknown";
     const char *os = "unknown";
     printf("\n");
-    printf("Masscan version %s ( %s )\n", 
+    printf("Masscan version %s ( %s )\n",
         MASSCAN_VERSION,
         "https://github.com/robertdavidgraham/masscan"
         );
@@ -697,7 +697,7 @@ parseTime(const char *value)
 }
 
 /***************************************************************************
- * Parses a size integer, which can be suffixed with "tera", "giga", 
+ * Parses a size integer, which can be suffixed with "tera", "giga",
  * "mega", and "kilo". These numbers are in units of 1024 so suck it.
  ***************************************************************************/
 static uint64_t
@@ -1006,9 +1006,9 @@ masscan_set_parameter(struct Masscan *masscan,
              || EQUALS("banner-apps", name) || EQUALS("banner-app", name)
            ) {
         enum ApplicationProtocol app;
-        
+
         app = masscan_string_to_app(value);
-        
+
         if (app)
             rangelist_add_range(&masscan->banner_types, app, app);
         else {
@@ -1220,7 +1220,7 @@ masscan_set_parameter(struct Masscan *masscan,
         memcpy(value2, value, strlen(value)+1);
 
         pay = (struct TcpCfgPayloads *)malloc(sizeof(*pay));
-        
+
         pay->payload_base64 = value2;
         pay->port = index;
         pay->next = masscan->tcp_payloads;
@@ -1404,7 +1404,7 @@ masscan_set_parameter(struct Masscan *masscan,
         if (masscan->output.format == 0)
             masscan->output.format = Output_XML;
         strcpy_s(masscan->output.filename,
-                 sizeof(masscan->output.filename), 
+                 sizeof(masscan->output.filename),
                  value);
     } else if (EQUALS("pcap", name)) {
         strcpy_s(masscan->pcap_filename, sizeof(masscan->pcap_filename), value);
@@ -1451,8 +1451,8 @@ masscan_set_parameter(struct Masscan *masscan,
         masscan->redis.ip = range.begin;
         masscan->redis.port = port;
         masscan->output.format = Output_Redis;
-        strcpy_s(masscan->output.filename, 
-                 sizeof(masscan->output.filename), 
+        strcpy_s(masscan->output.filename,
+                 sizeof(masscan->output.filename),
                  "<redis>");
     } else if (EQUALS("release-memory", name)) {
         fprintf(stderr, "nmap(%s): this is our default option\n", name);
@@ -1470,7 +1470,7 @@ masscan_set_parameter(struct Masscan *masscan,
         } else {
             masscan->retries = x;
         }
-    } else if (EQUALS("rotate-output", name) || EQUALS("rotate", name) 
+    } else if (EQUALS("rotate-output", name) || EQUALS("rotate", name)
         || EQUALS("ouput-rotate", name) || EQUALS("rotate-time", name) ) {
         masscan->output.rotate.timeout = (unsigned)parseTime(value);
     } else if (EQUALS("rotate-offset", name) || EQUALS("ouput-rotate-offset", name)) {
@@ -1504,7 +1504,7 @@ masscan_set_parameter(struct Masscan *masscan,
                 exit(1);
             }
         }
-        
+
         masscan->script.name = script_lookup(value)->name;
     } else if (EQUALS("scan-delay", name) || EQUALS("max-scan-delay", name)) {
         fprintf(stderr, "nmap(%s): unsupported: we do timing VASTLY differently!\n", name);
@@ -1560,8 +1560,8 @@ masscan_set_parameter(struct Masscan *masscan,
     } else if (EQUALS("no-stylesheet", name)) {
         masscan->output.stylesheet[0] = '\0';
     } else if (EQUALS("stylesheet", name)) {
-        strcpy_s(masscan->output.stylesheet, 
-                 sizeof(masscan->output.stylesheet), 
+        strcpy_s(masscan->output.stylesheet,
+                 sizeof(masscan->output.stylesheet),
                  value);
     } else if (EQUALS("system-dns", name)) {
         fprintf(stderr, "nmap(%s): DNS lookups will never be supported by this code\n", name);
@@ -1706,7 +1706,7 @@ masscan_command_line(struct Masscan *masscan, int argc, char *argv[])
             } else if (EQUALS("readscan", argv[i]+2)) {
                 /* Read in a binary file instead of scanning the network*/
                 masscan->op = Operation_ReadScan;
-                
+
                 /* Default to reading banners */
                 masscan->is_banners = 1;
 
@@ -2134,7 +2134,7 @@ mainconf_selftest()
     {
         int argc = 6;
         char *argv[] = { "foo", "bar", "-ddd", "--readscan", "xxx", "--something" };
-    
+
         if (masscan_conf_contains("--nothing", argc, argv))
             return 1;
 
@@ -2144,4 +2144,3 @@ mainconf_selftest()
 
     return 0;
 }
-
