@@ -7,6 +7,8 @@
       'cwd': '<!(pwd)',
       'path': 'src/masscan/src',
       'ldpath': 'build/Release',
+#      'copy': '<!(cp <(path)/main.c <(path)/main.orig)',
+#      'replace': "<!(sed '/^int main.*/,/^}/d' <(path)/main.orig > <(path)/main.c)",
     },
     "include_dirs": [
       "<(path)/src",
@@ -14,8 +16,11 @@
     "conditions": [
       ['OS=="linux"', {
         "cflags": [
+          "-ggdb",
+          "-O3",
+          "-fPIC",
           "-std=gnu99",
-          "-O2",
+          "-Wl,--whole-archive"
         ],
         "link_settings": {
           "libraries": [
@@ -136,12 +141,8 @@
           "<(cwd)/<(ldpath)/masscan.so"
         ],
         "cflags": [
-          "-fPIC",
-          "-O2",
+          "-O3",
 				],
-				"ldflags": [
-          "-pthread",
-        ]
 			}]
 		],
 	}]

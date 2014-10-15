@@ -495,13 +495,21 @@ rangelist_pick2_destroy(unsigned *picker)
 unsigned
 rangelist_pick2(const struct RangeList *targets, uint64_t index, const unsigned *picker)
 {
+//LOG(0, "<===============================>\n");
     unsigned maxmax = targets->count;
     unsigned min = 0;
     unsigned max = targets->count;
     unsigned mid;
 
+/*
+LOG(0, "rangelist-max: %u\n", max);
+LOG(0, "rangelist-min: %u\n", min);
+LOG(0, "rangelist-maxmax: %u\n", maxmax);
+*/
     for (;;) {
         mid = min + (max-min)/2;
+//LOG(0, "rangelist-mid: %u\n", mid);
+//LOG(0, "length: %u\n", (sizeof((picker))/sizeof((picker[0]))));
         if (index < picker[mid]) {
             max = mid;
             continue;
@@ -514,7 +522,8 @@ rangelist_pick2(const struct RangeList *targets, uint64_t index, const unsigned 
                 min = mid+1;
         }
     }
-
+//LOG(0, "rangelist-return: %u\n", (unsigned)(targets->list[mid].begin + (index - picker[mid])));
+//LOG(0, "<===================================>\n");
     return (unsigned)(targets->list[mid].begin + (index - picker[mid]));
 }
 

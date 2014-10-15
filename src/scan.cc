@@ -752,9 +752,21 @@ end:
                 while (xXx >= range)
                     xXx -= range;
             xXx = blackrock_shuffle(&blackrock,  xXx);
+//LOG(0, "xXx: %u\n", xXx);
+//LOG(0, "range: %u\n", range);
+//LOG(0, "i: %u\n", i);
+//LOG(0, "end: %u\n", end);
+const struct RangeList *wtf = &masscan->targets;
+//LOG(0, "targets: %u\n", wtf->count);
+//LOG(0, "modulus: %u\n", xXx % count_ips);
+//LOG(0, "picker: %u\n", picker);
+//LOG(0, "<============================>\n");
+            if (wtf->count < 1 || wtf->count > 1) {
+              break;
+            }
+
             ip_them = rangelist_pick2(&masscan->targets, xXx % count_ips, picker);
             port_them = rangelist_pick(&masscan->ports, xXx / count_ips);
-
             /*
              * SYN-COOKIE LOGIC
              *  Figure out the source IP/port, and the SYN cookie
@@ -1014,4 +1026,3 @@ Handle<Value> libmasscan::Scan(struct Masscan *masscan) {
 
   return scope.Close(Undefined());
 }
-

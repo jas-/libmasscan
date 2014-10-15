@@ -1,12 +1,13 @@
 var lib = require('../build/Release/masscan.node')
   , opts = {
-      iface: 'eth0',
+//      iface: 'eth0',
       gateway: '52-55-c0-a8-05-02',
       ports: '22,80,443,3306-10000',
       excludeports: '4000-9500',
       range: [
+//        '10.0.2.15',
         '10.0.2.0/24',
-        '192.168.2.0/25',
+//        '192.168.2.0/25',
 //        '190.8.32.0/20',
       ],
       exclude: [
