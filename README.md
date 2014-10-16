@@ -1,7 +1,32 @@
 # libmasscan
 Native extension provding an interface to the [masscan](https://github.com/robertdavidgraham/masscan) tool from node.js
 
-Not quite fit for consumption
+Not quite fit for consumption.
+
+## Install
+It is not currently deployed to the `npm` registry so for now you must clone
+and include submodules like so:
+
+```sh
+%> git clone --recursive https://github.com/jas-/libmasscan.git
+```
+
+## Configuration
+Next you will need to change into the newly cloned folder and build.
+
+```sh
+%> cd libmasscan/
+%> npm install
+```
+
+## Linking
+I have not implemented the necessary functionality to copy the resulting
+shared object created from the `masscan` tool into the system library folder
+so for now you must resolve dependencies like so
+
+```sh
+%> export LD_LIBRARY_PATH=/path/to/libmasscan/build/Release
+```
 
 ## Example use
 ```javascript
