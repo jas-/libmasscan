@@ -553,7 +553,7 @@ static void receive_thread(void *v) {
 
             /* verify: syn-cookies */
             if (cookie != seqno_me - 1) {
-                LOG(5, "%u.%u.%u.%u - bad cookie: ackno=0x%08x expected=0x%08x\n",
+                LOG(0, "%u.%u.%u.%u - bad cookie: ackno=0x%08x expected=0x%08x\n",
                     (ip_them>>24)&0xff, (ip_them>>16)&0xff,
                     (ip_them>>8)&0xff, (ip_them>>0)&0xff,
                     seqno_me-1, cookie);
@@ -699,7 +699,7 @@ end:
     /* -----------------
      * the main loop
      * -----------------*/
-    LOG(3, "xmit: starting main loop: [%llu..%llu]\n", start, end);
+    LOG(0, "xmit: starting main loop: [%llu..%llu]\n", start, end);
     for (i=start; i<end; ) {
         uint64_t batch_size;
 
@@ -1022,6 +1022,65 @@ Handle<Value> libmasscan::Scan(struct Masscan *masscan) {
 
     pixie_begin_thread(transmit_thread, 0, parms);
     pixie_begin_thread(receive_thread, 0, parms);
+
+    {
+      char buffer[80];
+      struct tm x;
+
+      now = time(0);
+      gmtime_s(&x, &now);
+      strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S GMT", &x);
+      LOG(0, "\nStarting masscan " MASSCAN_VERSION " (http://bit.ly/14GZzcT) at %s\n", buffer);
+      LOG(0, " -- forced options: -sS -Pn -n --randomize-hosts -v --send-eth\n");
+      LOG(0, "Initiating SYN Stealth Scan\n");
+      LOG(0, "Scanning %u hosts [%u port%s/host]\n",
+        (unsigned)count_ips, (unsigned)count_ports, (count_ports==1)?"":"s");
+    }
+
+    status_start(&status);
+    status.is_infinite = masscan->is_infinite;
+    while (!control_c_pressed) {
+        unsigned i;
+        double rate = 0;
+        uint64_t total_tcbs = 0;
+        uint64_t total_synacks = 0;
+        uint64_t total_syns = 0;
+
+
+        /* Find the minimum index of all the threads */
+        min_index = UINT64_MAX;
+        for (i=0; i<masscan->nic_count; i++) {
+            struct ThreadPair *parms = &parms_array[i];
+
+            if (min_index > parms->my_index)
+                min_index = parms->my_index;
+
+            rate += parms->throttler->current_rate;
+
+            if (parms->total_tcbs)
+                total_tcbs += *parms->total_tcbs;
+            if (parms->total_synacks)
+                total_synacks += *parms->total_synacks;
+            if (parms->total_syns)
+                total_syns += *parms->total_syns;
+        }
+
+        if (min_index >= range && !masscan->is_infinite) {
+            /* Note: This is how we can tell the scan has ended */
+            control_c_pressed = 1;
+        }
+
+        /*
+         * update screen about once per second with statistics,
+         * namely packets/second.
+         */
+        status_print(&status, min_index, range, rate,
+            total_tcbs, total_synacks, total_syns,
+            0);
+
+        /* Sleep for almost a second */
+        pixie_mssleep(750);
+    }
   }
 
   return scope.Close(Undefined());
