@@ -1081,7 +1081,90 @@ Handle<Value> libmasscan::Scan(struct Masscan *masscan) {
         /* Sleep for almost a second */
         pixie_mssleep(750);
     }
+
+    /*
+     * If we haven't completed the scan, then save the resume
+     * information.
+     */
+    if (min_index < count_ips * count_ports) {
+        masscan->resume.index = min_index;
+
+        /* Write current settings to "paused.conf" so that the scan can be restarted */
+        masscan_save_state(masscan);
+    }
+
+
+
+    /*
+     * Now wait for all threads to exit
+     */
+    now = time(0);
+    for (;;) {
+        unsigned transmit_count = 0;
+        unsigned receive_count = 0;
+        unsigned i;
+        double rate = 0;
+        uint64_t total_tcbs = 0;
+        uint64_t total_synacks = 0;
+        uint64_t total_syns = 0;
+
+
+        /* Find the minimum index of all the threads */
+        min_index = UINT64_MAX;
+        for (i=0; i<masscan->nic_count; i++) {
+            struct ThreadPair *parms = &parms_array[i];
+
+            if (min_index > parms->my_index)
+                min_index = parms->my_index;
+
+            rate += parms->throttler->current_rate;
+
+            if (parms->total_tcbs)
+                total_tcbs += *parms->total_tcbs;
+            if (parms->total_synacks)
+                total_synacks += *parms->total_synacks;
+            if (parms->total_syns)
+                total_syns += *parms->total_syns;
+        }
+
+
+        status_print(&status, min_index, range, rate,
+            total_tcbs, total_synacks, total_syns,
+            masscan->wait - (time(0) - now));
+
+        if (time(0) - now >= masscan->wait)
+            control_c_pressed_again = 1;
+
+        for (i=0; i<masscan->nic_count; i++) {
+            struct ThreadPair *parms = &parms_array[i];
+
+            transmit_count += parms->done_transmitting;
+            receive_count += parms->done_receiving;
+
+        }
+
+        pixie_mssleep(100);
+
+        if (transmit_count < masscan->nic_count)
+            continue;
+        control_c_pressed = 1;
+        control_c_pressed_again = 1;
+        if (receive_count < masscan->nic_count)
+            continue;
+        break;
+    }
+
+    LOG(1, "EXITING main thread\n");
+
+    /*
+     * Now cleanup everything
+     */
+    status_finish(&status);
+    rangelist_pick2_destroy(picker);
+
+    return scope.Close(Undefined());
   }
 
   return scope.Close(Undefined());
+
 }
