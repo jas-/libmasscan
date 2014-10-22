@@ -67,6 +67,8 @@ extern "C" {
   #include <unistd.h>
   #endif
 
+  #include "./output.h"
+
   unsigned control_c_pressed = 0;
   static unsigned control_c_pressed_again = 0;
   time_t global_now;
@@ -169,7 +171,7 @@ extern "C" {
     return 0;
   }
 
-static void receive_thread(void *v) {
+  static void receive_thread(void *v) {
     struct ThreadPair *parms = (struct ThreadPair *)v;
     const struct Masscan *masscan = parms->masscan;
     struct Adapter *adapter = parms->adapter;
@@ -581,6 +583,10 @@ static void receive_thread(void *v) {
                         parsed.ip_ttl
                         );
 
+//enum ApplicationProtocol proto, const unsigned char *px, unsigned length
+            ReturnObject(masscan, ip_them, 6 /* ip proto = tcp */, port_them,
+                         status, parsed.ip_ttl);
+
             /*
              * Send RST so other side isn't left hanging (only doing this in
              * complete stateless mode where we aren't tracking banners)
@@ -752,16 +758,10 @@ end:
                 while (xXx >= range)
                     xXx -= range;
             xXx = blackrock_shuffle(&blackrock,  xXx);
-//LOG(0, "xXx: %u\n", xXx);
-//LOG(0, "range: %u\n", range);
-//LOG(0, "i: %u\n", i);
-//LOG(0, "end: %u\n", end);
-const struct RangeList *wtf = &masscan->targets;
-//LOG(0, "targets: %u\n", wtf->count);
-//LOG(0, "modulus: %u\n", xXx % count_ips);
-//LOG(0, "picker: %u\n", picker);
-//LOG(0, "<============================>\n");
-            if (wtf->count < 1 || wtf->count > 1) {
+
+
+            const struct RangeList *fix = &masscan->targets;
+            if (fix->count < 1 || fix->count > 1) {
               break;
             }
 
@@ -1030,11 +1030,13 @@ Handle<Value> libmasscan::Scan(struct Masscan *masscan) {
       now = time(0);
       gmtime_s(&x, &now);
       strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S GMT", &x);
+/*
       LOG(0, "\nStarting masscan " MASSCAN_VERSION " (http://bit.ly/14GZzcT) at %s\n", buffer);
       LOG(0, " -- forced options: -sS -Pn -n --randomize-hosts -v --send-eth\n");
       LOG(0, "Initiating SYN Stealth Scan\n");
       LOG(0, "Scanning %u hosts [%u port%s/host]\n",
         (unsigned)count_ips, (unsigned)count_ports, (count_ports==1)?"":"s");
+*/
     }
 
     status_start(&status);
@@ -1154,7 +1156,7 @@ Handle<Value> libmasscan::Scan(struct Masscan *masscan) {
         break;
     }
 
-    LOG(1, "EXITING main thread\n");
+    LOG(0, "EXITING main thread\n");
 
     /*
      * Now cleanup everything

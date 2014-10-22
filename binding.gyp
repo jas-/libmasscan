@@ -130,7 +130,7 @@
 			"masscan",
 		],
 		"sources": [
-#			"src/output.cc",
+			"src/output.cc",
 			"src/config.cc",
 			"src/scan.cc",
 			"src/libmasscan.cc",

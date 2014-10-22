@@ -35,6 +35,8 @@ Handle<Value> libmasscan::LibMasscan(const Arguments& args) {
 		}
 	}
 
+  ms.cb = v8::Persistent<v8::Function>::New(callback);
+
 	if (args[0]->IsObject()) {
     obj = args[0]->ToObject();
     ms.Config(obj, masscan);
@@ -42,13 +44,15 @@ Handle<Value> libmasscan::LibMasscan(const Arguments& args) {
 
   ms.Scan(masscan);
 
-  const unsigned argc = 2;
+/*  const unsigned argc = 2;
   Local<Value> argv[argc] = {
     Local<Value>::New(Null()),
     Local<Value>::New(obj)
   };
 
   return callback->Call(Context::GetCurrent()->Global(), argc, argv);
+*/
+  return scope.Close(Undefined());
 }
 
 void libmasscan::Init (Handle<Object> exports) {

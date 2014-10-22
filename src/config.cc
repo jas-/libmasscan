@@ -245,7 +245,7 @@ void libmasscan::ConfigPorts(Handle<Object> obj, Masscan masscan[1]) {
     rangelist_parse_ports(&masscan->ports,
                           *v8::String::Utf8Value(value->ToString()), &is_error);
 	} else {
-    rangelist_parse_ports(&masscan->ports, "0", &is_error);
+    rangelist_parse_ports(&masscan->ports, "1-1024", &is_error);
   }
 
 }

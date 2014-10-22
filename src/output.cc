@@ -1,13 +1,46 @@
-extern "C" {
-  #include "masscan/src/masscan.h"
-}
+#include <node.h>
+#include <v8.h>
 
-#include "libzmap.h"
+#include "./libmasscan.h"
 
 using namespace node;
 using namespace v8;
 
-Handle<Value> libzmap::Summary(Masscan masscan[1]) {
+extern "C" {
+  #include "masscan/src/logger.h"
+  void ReturnObject(Masscan *masscan, unsigned ip, unsigned ip_proto,
+                    unsigned port, unsigned reason, unsigned ttl) {
+    libmasscan lm;
+
+    lm.Report(masscan, ip, ip_proto, port, reason, ttl);
+  }
+}
+
+void libmasscan::Intermediary(Masscan *masscan, unsigned ip, unsigned ip_proto,
+                        unsigned port, unsigned reason, unsigned ttl) {
+  libmasscan lm;
+
+  lm.Report(masscan, ip, ip_proto, port, reason, ttl);
+}
+
+void libmasscan::Report(Masscan *masscan, unsigned ip, unsigned ip_proto,
+                        unsigned port, unsigned reason, unsigned ttl) {
+  LOG(0, "%u\n", ip);
+  HandleScope scope;
+  libmasscan lm;
+
+  //Local<Object> obj = Object::New();
+  //v8::Persistent<v8::Object> pobj(v8::Persistent<v8::Object>::New(obj));
+
+  /* Create object out of supplied IP if it doesn't exist */
+  /* If object with key of IP exists add new object to it */
+
+//  if (masscan->is_offline) {
+    //lm.RunCallback(pobj);
+//  }
+}
+
+Handle<Value> libmasscan::Summary(Masscan masscan[1]) {
 	HandleScope scope;
 
 	Local<Object> obj = Object::New();
@@ -34,4 +67,16 @@ Handle<Value> libzmap::Summary(Masscan masscan[1]) {
 	obj->Set(String::NewSymbol("statistics"), stat);
 
 	return scope.Close(obj);
+}
+
+Handle<Value> libmasscan::RunCallback(Handle<Object> obj) {
+  HandleScope scope;
+
+  const unsigned argc = 2;
+  Local<Value> argv[argc] = {
+    Local<Value>::New(Null()),
+    Local<Value>::New(obj)
+  };
+
+  return cb->Call(Context::GetCurrent()->Global(), argc, argv);
 }

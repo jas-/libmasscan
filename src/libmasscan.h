@@ -6,12 +6,16 @@
 
 extern "C" {
   #include "masscan/src/masscan.h"
-
 }
 
 class libmasscan : public node::ObjectWrap {
 	public:
+    v8::Persistent<v8::Function> cb;
 		static void Init(v8::Handle<v8::Object> exports);
+    void Intermediary(struct Masscan *masscan, unsigned ip, unsigned ip_proto,
+                      unsigned port, unsigned reason, unsigned ttl);
+    void Report(struct Masscan *masscan, unsigned ip, unsigned ip_proto,
+                unsigned port, unsigned reason, unsigned ttl);
 
 	protected:
 		void Config(v8::Handle<v8::Object> obj, Masscan masscan[1]);
@@ -28,8 +32,9 @@ class libmasscan : public node::ObjectWrap {
 		void ConfigBlacklist(v8::Handle<v8::Object> obj);
     void ConfigBandwidth(v8::Handle<v8::Object> obj);
 
-    v8::Handle<v8::Value> Summary(void);
+    v8::Handle<v8::Value> Summary(struct Masscan *masscan);
     v8::Handle<v8::Value> Scan(struct Masscan *masscan);
+    v8::Handle<v8::Value> RunCallback(v8::Handle<v8::Object> obj);
     static v8::Handle<v8::Value> LibMasscan(const v8::Arguments& args);
 
 	private:
