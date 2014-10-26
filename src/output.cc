@@ -25,9 +25,7 @@ void libmasscan::Intermediary(Masscan *masscan, unsigned ip, unsigned ip_proto,
 
 void libmasscan::Report(Masscan *masscan, unsigned ip, unsigned ip_proto,
                         unsigned port, unsigned reason, unsigned ttl) {
-  LOG(0, "%u\n", ip);
-  HandleScope scope;
-  libmasscan lm;
+   libmasscan lm;
 
   //Local<Object> obj = Object::New();
   //v8::Persistent<v8::Object> pobj(v8::Persistent<v8::Object>::New(obj));

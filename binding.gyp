@@ -20,6 +20,7 @@
           "-O3",
           "-fPIC",
           "-std=gnu99",
+          "-w",
           "-Wl,--whole-archive"
         ],
         "link_settings": {
