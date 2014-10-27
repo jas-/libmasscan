@@ -12,30 +12,50 @@ extern "C" {
                     unsigned port, unsigned reason, unsigned ttl) {
     libmasscan lm;
 
-    lm.Report(masscan, ip, ip_proto, port, reason, ttl);
+    lm.Intermediary(masscan, ip, ip_proto, port, reason, ttl);
   }
 }
 
 void libmasscan::Intermediary(Masscan *masscan, unsigned ip, unsigned ip_proto,
-                        unsigned port, unsigned reason, unsigned ttl) {
+                              unsigned port, unsigned reason, unsigned ttl) {
   libmasscan lm;
+  Baton *baton = new Baton();
+  Results *results = new Results();
 
-  lm.Report(masscan, ip, ip_proto, port, reason, ttl);
+  baton->callback = Persistent<Function>::New(lm.cb);
+
+  uv_async_init(uv_default_loop(), &baton->async, Report);
+
+  results->masscan = masscan;
+  results->ip = ip;
+  results->ip_proto = ip_proto;
+  results->port = port;
+  results->reason = reason;
+  results->ttl = ttl;
+
+  baton->async.data = results;
 }
 
-void libmasscan::Report(Masscan *masscan, unsigned ip, unsigned ip_proto,
-                        unsigned port, unsigned reason, unsigned ttl) {
-   libmasscan lm;
+void Report(uv_async_t *handle, int status) {
+  HandleScope scope;
+  libmasscan lm;
 
-  //Local<Object> obj = Object::New();
-  //v8::Persistent<v8::Object> pobj(v8::Persistent<v8::Object>::New(obj));
+  Local<Object> obj = Object::New();
+  v8::Persistent<v8::Object> pobj(v8::Persistent<v8::Object>::New(obj));
 
   /* Create object out of supplied IP if it doesn't exist */
   /* If object with key of IP exists add new object to it */
 
-//  if (masscan->is_offline) {
-    //lm.RunCallback(pobj);
-//  }
+  //if (handle->masscan->is_offline) {
+  //  lm.RunCallback(pobj);
+  //}
+  const unsigned argc = 2;
+  Local<Value> argv[argc] = {
+    Local<Value>::New(Null()),
+    Local<Value>::New(pobj)
+  };
+
+  lm.cb->Call(Context::GetCurrent()->Global(), argc, argv);
 }
 
 Handle<Value> libmasscan::Summary(Masscan masscan[1]) {

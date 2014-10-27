@@ -8,14 +8,32 @@ extern "C" {
   #include "masscan/src/masscan.h"
 }
 
+struct Baton {
+  int error;
+  std::string error_message;
+  uv_async_t async;
+
+  v8::Persistent<v8::Object> data;
+  v8::Persistent<v8::Function> callback;
+};
+
+struct Results {
+  struct Masscan *masscan;
+  unsigned ip;
+  unsigned ip_proto;
+  unsigned port;
+  unsigned reason;
+  unsigned ttl;
+};
+
+void Report(uv_async_t *handle, int status);
+
 class libmasscan : public node::ObjectWrap {
 	public:
     v8::Persistent<v8::Function> cb;
 		static void Init(v8::Handle<v8::Object> exports);
     void Intermediary(struct Masscan *masscan, unsigned ip, unsigned ip_proto,
                       unsigned port, unsigned reason, unsigned ttl);
-    void Report(struct Masscan *masscan, unsigned ip, unsigned ip_proto,
-                unsigned port, unsigned reason, unsigned ttl);
 
 	protected:
 		void Config(v8::Handle<v8::Object> obj, Masscan masscan[1]);

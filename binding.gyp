@@ -15,6 +15,12 @@
     ],
     "conditions": [
       ['OS=="linux"', {
+#        "copies": {
+#          'destination': '/lib64',
+#          'files': [
+#            '/lib64/masscan.so',
+#          ]
+#        },
         "cflags": [
           "-ggdb",
           "-O3",
