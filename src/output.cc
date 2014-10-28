@@ -8,6 +8,7 @@ using namespace v8;
 
 extern "C" {
   #include "masscan/src/logger.h"
+  #include "masscan/src/ranges.h"
   void ReturnObject(Masscan *masscan, unsigned ip, unsigned ip_proto,
                     unsigned port, unsigned reason, unsigned ttl) {
     libmasscan lm;
@@ -20,11 +21,19 @@ void libmasscan::Intermediary(Masscan *masscan, unsigned ip, unsigned ip_proto,
                               unsigned port, unsigned reason, unsigned ttl) {
   libmasscan lm;
   Baton *baton = new Baton();
-  Results *results = new Results();
 
   baton->callback = Persistent<Function>::New(lm.cb);
 
   uv_async_init(uv_default_loop(), &baton->async, Report);
+
+  CreateObject(baton, masscan, ip, ip_proto, port, reason, ttl);
+}
+
+void CreateObject(Baton* handle, Masscan *masscan, unsigned ip,
+                  unsigned ip_proto, unsigned port, unsigned reason,
+                  unsigned ttl) {
+
+  Results *results = new Results();
 
   results->masscan = masscan;
   results->ip = ip;
@@ -33,38 +42,59 @@ void libmasscan::Intermediary(Masscan *masscan, unsigned ip, unsigned ip_proto,
   results->reason = reason;
   results->ttl = ttl;
 
-  baton->async.data = results;
+  handle->async.data = results;
+
+  uv_async_send(&handle->async);
 }
 
 void Report(uv_async_t *handle, int status) {
   HandleScope scope;
   libmasscan lm;
 
-  Local<Object> obj = Object::New();
-  v8::Persistent<v8::Object> pobj(v8::Persistent<v8::Object>::New(obj));
+  //Persistent<Function> cb = Persistent<Function>::Cast(lm.cb);
 
-  /* Create object out of supplied IP if it doesn't exist */
-  /* If object with key of IP exists add new object to it */
+  Baton *baton = static_cast<Baton*>(handle->data);
+  Handle<Function> cb = Handle<Function>::Cast(baton->callback);
 
-  //if (handle->masscan->is_offline) {
-  //  lm.RunCallback(pobj);
-  //}
+  Results *results = static_cast<Results*>(handle->data);
+  Masscan *masscan = static_cast<Masscan*>(results->masscan);
+
+  Local<Object> ret = Object::New();
+	Local<Object> obj = Object::New();
+	Local<Object> res = Object::New();
+  Handle<Object> summary = Handle<Object>::Cast(Summary(masscan));
+
+  if (!res->Has(results->ip)) {
+    res->Set(Uint32::New(results->ip), obj);
+  }
+
+  obj->Set(String::NewSymbol("port"), Uint32::New(results->port));
+  ret->Set(String::NewSymbol("summary"), summary);
+  //uv_close((uv_handle_t*) &handle->data, NULL);
+
   const unsigned argc = 2;
   Local<Value> argv[argc] = {
     Local<Value>::New(Null()),
-    Local<Value>::New(pobj)
+    Local<Value>::New(ret)
   };
 
-  lm.cb->Call(Context::GetCurrent()->Global(), argc, argv);
+  if (v8::Context::InContext()) {
+    cb->Call(v8::Context::GetCurrent()->Global(), argc, argv);
+  }
+
+  //baton->callback.Dispose();
+  //baton->data.Dispose();
+  //delete baton;
 }
 
-Handle<Value> libmasscan::Summary(Masscan masscan[1]) {
+Handle<Object> Summary(Masscan masscan[1]) {
 	HandleScope scope;
 
 	Local<Object> obj = Object::New();
 	Local<Object> cnf = Object::New();
 	Local<Object> stat = Object::New();
 
+/*
   cnf->Set(String::NewSymbol("total-targets"),
 					 Uint32::New(rangelist_count(&masscan->targets)));
 
@@ -80,7 +110,7 @@ Handle<Value> libmasscan::Summary(Masscan masscan[1]) {
   cnf->Set(String::NewSymbol("total-packets"),
 					 Uint32::New(rangelist_count(&masscan->targets) *
                        rangelist_count(&masscan->ports)));
-
+*/
 	obj->Set(String::NewSymbol("configuration"), cnf);
 	obj->Set(String::NewSymbol("statistics"), stat);
 

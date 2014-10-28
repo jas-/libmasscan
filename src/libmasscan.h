@@ -27,6 +27,10 @@ struct Results {
 };
 
 void Report(uv_async_t *handle, int status);
+void CreateObject(Baton* handle, Masscan *masscan, unsigned ip,
+                  unsigned ip_proto, unsigned port, unsigned reason,
+                  unsigned ttl);
+v8::Handle<v8::Object> Summary(Masscan masscan[1]);
 
 class libmasscan : public node::ObjectWrap {
 	public:
