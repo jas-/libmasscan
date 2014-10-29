@@ -21,10 +21,12 @@ void libmasscan::Intermediary(Masscan *masscan, unsigned ip, unsigned ip_proto,
                               unsigned port, unsigned reason, unsigned ttl) {
   libmasscan lm;
   Baton *baton = new Baton();
+  uv_work_t req;
 
   baton->callback = Persistent<Function>::New(lm.cb);
 
   uv_async_init(uv_default_loop(), &baton->async, Report);
+  //uv_queue_work(uv_default_loop(), &req, fake_download, after);
 
   CreateObject(baton, masscan, ip, ip_proto, port, reason, ttl);
 }
@@ -51,10 +53,12 @@ void Report(uv_async_t *handle, int status) {
   HandleScope scope;
   libmasscan lm;
 
-  //Persistent<Function> cb = Persistent<Function>::Cast(lm.cb);
+  Persistent<Function> cb = Persistent<Function>::Cast(lm.cb);
 
+/*
   Baton *baton = static_cast<Baton*>(handle->data);
-  Handle<Function> cb = Handle<Function>::Cast(baton->callback);
+  Persistent<Function> cb = Persistent<Function>::Cast(baton->callback);
+*/
 
   Results *results = static_cast<Results*>(handle->data);
   Masscan *masscan = static_cast<Masscan*>(results->masscan);
@@ -70,7 +74,8 @@ void Report(uv_async_t *handle, int status) {
 
   obj->Set(String::NewSymbol("port"), Uint32::New(results->port));
   ret->Set(String::NewSymbol("summary"), summary);
-  //uv_close((uv_handle_t*) &handle->data, NULL);
+
+  uv_close((uv_handle_t*) &handle, 0);
 
   const unsigned argc = 2;
   Local<Value> argv[argc] = {
