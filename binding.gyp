@@ -7,26 +7,18 @@
       'cwd': '<!(pwd)',
       'path': 'src/masscan/src',
       'ldpath': 'build/Release',
-#      'copy': '<!(cp <(path)/main.c <(path)/main.orig)',
-#      'replace': "<!(sed '/^int main.*/,/^}/d' <(path)/main.orig > <(path)/main.c)",
     },
     "include_dirs": [
       "<(path)/src",
     ],
     "conditions": [
       ['OS=="linux"', {
-#        "copies": {
-#          'destination': '/lib64',
-#          'files': [
-#            '/lib64/masscan.so',
-#          ]
-#        },
         "cflags": [
           "-ggdb",
-          "-O3",
           "-fPIC",
           "-std=gnu99",
           "-w",
+          "-g",
           "-Wl,--whole-archive"
         ],
         "link_settings": {
@@ -126,7 +118,7 @@
 		"type": "loadable_module",
     "variables": {
       'cwd': '<!(pwd)',
-      'path': 'src/zmap-1.2.1',
+      'path': 'src/masscan',
       'ldpath': 'build/Release',
     },
 		"include_dirs": [
@@ -148,7 +140,8 @@
           "<(cwd)/<(ldpath)/masscan.so"
         ],
         "cflags": [
-          "-O3",
+          "-ggdb",
+          "-g"
 				],
 			}]
 		],
