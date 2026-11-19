@@ -7,9 +7,23 @@
   "license": "AGPL-3.0",
   "keywords": [
     "masscan",
-    "port scanner",
-    "network scanner",
-    "n-api"
+    "port-scanner",
+    "port-scan",
+    "network-scanner",
+    "scanner",
+    "tcp",
+    "udp",
+    "syn-scan",
+    "banner-grabbing",
+    "network",
+    "security",
+    "pentest",
+    "reconnaissance",
+    "pcap",
+    "native",
+    "addon",
+    "n-api",
+    "napi"
   ],
   "repository": {
     "type": "git",
@@ -36,8 +50,7 @@
     "src/masscan/src/",
     "src/masscan/LICENSE",
     "examples/",
-    "!examples/consumer/node_modules",
-    "!examples/consumer/package-lock.json"
+    "!examples/consumer"
   ],
   "scripts": {
     "install": "node scripts/fetch-masscan.js && node-gyp rebuild",

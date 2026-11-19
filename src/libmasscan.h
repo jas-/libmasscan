@@ -63,6 +63,10 @@ struct lm_scan {
     size_t capacity;
     int notify_pending;
 
+    /* Kept out of the queue, so an allocation failure cannot drop it. */
+    struct lm_event done;
+    int has_done;
+
     void *tsfn;              /* napi_threadsafe_function */
 
     int argc;

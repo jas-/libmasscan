@@ -175,3 +175,35 @@ test('many scans in a row do not leak file descriptors', async () => {
   }
   assert.ok(fds() - before < 5, `fd count grew from ${before} to ${fds()}`);
 });
+
+test('a failure that the module finds reports exit code 1', async () => {
+  await assert.rejects(masscan.scan({ range: '10.0.0.0/30' }).done,
+    (err) => err.exitCode === 1);
+});
+
+// These run in a child process, because they test what reaches the process.
+function child(code) {
+  const { spawnSync } = require('node:child_process');
+  return spawnSync(process.execPath, ['-e', `const masscan = require(${JSON.stringify(require.resolve('..'))});\n${code}`],
+    { encoding: 'utf8', timeout: 60_000 });
+}
+
+test('a failed scan with no error listener is an unhandled rejection', () => {
+  const r = child(`masscan.scan({ ports: '80' }).on('done', () => console.log('done'));`);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /target IP address list empty/);
+  assert.doesNotMatch(r.stdout, /done/);
+});
+
+test('a throwing listener reaches uncaughtException and the scan still settles', () => {
+  const r = child(`
+    const OFFLINE = ${JSON.stringify(OFFLINE)};
+    let thrown = 0;
+    process.on('uncaughtException', () => thrown++);
+    const scan = masscan.scan({ ...OFFLINE, range: '10.0.0.0/30', ports: '80', wait: 0 });
+    scan.on('progress', () => { throw new Error('listener bug'); });
+    scan.done.then(() => setImmediate(() => console.log('settled', thrown > 0)));
+  `);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /settled true/);
+});

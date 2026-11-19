@@ -1,7 +1,10 @@
 /* Replaces upstream logging, status and output with events. Not compiled with the shim. */
 #include "libmasscan.h"
 
+#if defined(__GLIBC__) || defined(__APPLE__)
 #include <execinfo.h>
+#define LM_HAVE_BACKTRACE 1
+#endif
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -261,12 +264,14 @@ libmasscan_exit(int code)
     if (lm_current == NULL)
         fprintf(stderr, "libmasscan: masscan called exit(%d) outside a "
                         "scan. Later scans will be refused.\n", code);
+#ifdef LM_HAVE_BACKTRACE
     if (getenv("LIBMASSCAN_DEBUG")) {
         void *frames[32];
         int n = backtrace(frames, 32);
         fprintf(stderr, "libmasscan: exit(%d) called from:\n", code);
         backtrace_symbols_fd(frames, n, 2);
     }
+#endif
 
     if (target) {
         struct lm_scan *scan = lm_current;

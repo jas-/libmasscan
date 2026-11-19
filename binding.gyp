@@ -16,9 +16,10 @@
         "src/masscan-output.c"
       ],
       "include_dirs": [ "<(masscan_src)" ],
-      "cflags": [ "-fPIC", "-std=gnu99", "-O2", "-w", "-include", "<(shim)" ],
+      "cflags": [ "-fPIC", "-fvisibility=hidden", "-std=gnu99", "-O2", "-w", "-include", "<(shim)" ],
       "xcode_settings": {
         "OTHER_CFLAGS": [ "-std=gnu99", "-O2", "-w", "-include", "<(shim)" ],
+        "GCC_SYMBOLS_PRIVATE_EXTERN": "YES",
         "GCC_WARN_INHIBIT_ALL_WARNINGS": "YES"
       }
     },
@@ -27,9 +28,11 @@
       "dependencies": [ "masscan_core" ],
       "sources": [ "src/addon.c", "src/hooks.c", "src/runner.c" ],
       "include_dirs": [ "src", "<(masscan_src)" ],
-      "cflags": [ "-std=gnu99", "-O2" ],
+      # Hidden symbols stop the host process from replacing masscan functions on Linux.
+      "cflags": [ "-fvisibility=hidden", "-std=gnu99", "-O2", "-Wno-empty-body" ],
       "xcode_settings": {
-        "OTHER_CFLAGS": [ "-std=gnu99", "-O2" ]
+        "OTHER_CFLAGS": [ "-std=gnu99", "-O2", "-Wno-empty-body" ],
+        "GCC_SYMBOLS_PRIVATE_EXTERN": "YES"
       },
       "conditions": [
         [ "OS=='linux'", {

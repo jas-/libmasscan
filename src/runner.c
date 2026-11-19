@@ -186,6 +186,7 @@ static void
 lm_fail(struct lm_run_result *result, const char *message)
 {
     result->failed = 1;
+    result->exit_code = 1;
     snprintf(result->message, sizeof(result->message), "%s", message);
 }
 
@@ -303,6 +304,10 @@ lm_run(int argc, char **argv, struct lm_run_result *result)
     if (rc != 0) {
         result->failed = 1;
         result->exit_code = rc;
+    } else if (lm_poisoned) {
+        /* A scan thread called exit() and ended, so the results are incomplete. */
+        result->failed = 1;
+        result->exit_code = 1;
     }
     if (lm_has_saved_state) {
         /* Upstream's saved index can lag the transmit thread. Use the later one. */

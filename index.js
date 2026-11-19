@@ -80,14 +80,13 @@ class Scan extends EventEmitter {
       this._resolve = resolve;
       this._reject = reject;
     });
-    // A caller that uses only events must not get an unhandled rejection.
-    this.done.catch(() => {});
 
     binding.start(args, (events) => this._dispatch(events));
   }
 
   _dispatch(events) {
     const { report } = this;
+    const thrown = [];
     for (const event of events) {
       const { type, ...data } = event;
       if (type === 'result') {
@@ -100,12 +99,16 @@ class Scan extends EventEmitter {
         if (this.collect) report.banners.push(data);
       }
 
-      if (type === 'done') {
-        this._finish(data);
-      } else {
-        this.emit(type, data);
+      // A throwing listener must not drop the rest of the batch, or the scan never settles.
+      try {
+        if (type === 'done') this._finish(data);
+        else this.emit(type, data);
+      } catch (err) {
+        thrown.push(err);
       }
     }
+    // Node-API hides exceptions thrown in this callback, so rethrow them outside it.
+    for (const err of thrown) process.nextTick(() => { throw err; });
   }
 
   _finish({ error, exitCode, resumeIndex }) {
@@ -121,8 +124,11 @@ class Scan extends EventEmitter {
       err.exitCode = exitCode;
       err.log = error.split('\n');
       err.report = report;
+      // No 'error' listener: the rejection is unhandled unless the caller uses scan.done.
+      const listened = this.listenerCount('error') > 0;
+      if (listened) this.done.catch(() => {});
       this._reject(err);
-      if (this.listenerCount('error') > 0) this.emit('error', err);
+      if (listened) this.emit('error', err);
       return;
     }
     this._resolve(report);

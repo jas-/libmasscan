@@ -1,23 +1,25 @@
 # libmasscan
 
-Node.js bindings for the [masscan](https://github.com/robertdavidgraham/masscan) port scanner. Masscan runs inside the Node.js process as native code. It does not run as a child process. Results go to JavaScript as events, and the event loop never blocks.
-
-libmasscan is a module only. It has no command-line tool. To run a scan, call `scan()` from your own code.
+Node.js bindings for the [masscan](https://github.com/robertdavidgraham/masscan) port scanner. 
 
 ## Requirements
 
 - Linux or macOS.
-- Node.js 18 or later, and a C compiler for `node-gyp`.
+- Node.js 18 or later.
+- The `node-gyp` toolchain: `make`, `python3`, `gcc` and `g++`. node-gyp links with `g++`, although the code is C.
+  - Debian and Ubuntu: `apt install build-essential python3`
+  - Fedora and RHEL: `dnf install gcc gcc-c++ make python3`
+  - Alpine: `apk add build-base linux-headers python3`
 - libpcap at run time. Masscan loads it dynamically.
 - Root, or `CAP_NET_RAW` on Linux, for live scans.
 
 ## Install
 
-The package is not on the npm registry yet. Install it with npm from the GitHub repository, or clone it with git.
+Install libmasscan from the npm registry, or from GitHub with npm or git.
 
 Both methods compile masscan with `node-gyp`. Before the build, the install script gets the masscan sources:
 
-1. If `src/masscan` already has the sources, the install uses them.
+1. If `src/masscan` already has the sources, the install uses them. The npm package includes them.
 2. In a git clone, the install runs `git submodule update --init --recursive`.
 3. In other cases, the install downloads the masscan commit that `masscan.commit` in `package.json` pins.
 
@@ -29,6 +31,12 @@ Add libmasscan as a dependency of your project:
 
 ```sh
 cd my-project
+npm install libmasscan
+```
+
+To install the latest code from GitHub in place of the published release:
+
+```sh
 npm install github:jas-/libmasscan
 ```
 
@@ -67,43 +75,6 @@ On Linux, you can give the Node.js binary raw-socket access so that it does not 
 ```sh
 sudo setcap cap_net_raw+ep "$(command -v node)"
 ```
-
-`examples/consumer/` is a separate project that installs libmasscan from a local path and checks that the import works. It takes no command-line arguments. It reads `config.json`, and passes its `options` object to `scan()` unchanged:
-
-```json
-{
-  "options": {
-    "range": ["10.0.0.0/29", "10.0.1.0/30"],
-    "exclude": ["10.0.0.7"],
-    "ports": "22,80,443,8000-8010",
-    "excludePorts": "8005",
-    "rate": 10000,
-    "wait": 0,
-    "offline": true,
-    "adapter": "lo",
-    "adapterIp": "10.9.9.9",
-    "adapterMac": "00-11-22-33-44-55",
-    "routerMac": "66-55-44-33-22-11"
-  },
-  "timeoutMs": 30000
-}
-```
-
-- `options` holds libmasscan options, with the names and values in [Options](#options). Any masscan option works, for example `includeFile`, `excludeFile`, `seed`, `banners` or `resumeIndex`.
-- `timeoutMs` (optional) stops the scan after that time. The report then has `timedOut: true` and a `resumeIndex`.
-- `$comment` is ignored. Any other top-level key is an error.
-
-The shipped `config.json` runs in offline mode, so it needs no root and sends no packets. For a live scan, copy `config.live.example.json` to `config.json` and edit the targets.
-
-```sh
-cd examples/consumer
-npm install
-npm start         # check lines on stderr, the JSON report on stdout; exit 0 if all pass
-sudo npm start    # after you put a live configuration in config.json
-npm start --silent > report.json   # --silent keeps npm's "> start" lines out of the file
-```
-
-Make `timeoutMs` long enough for the scan: the number of probes (addresses × ports) divided by `rate`, plus `wait`. Your application must run as root, or with `CAP_NET_RAW` on Linux, to send packets.
 
 Scan only networks that you own or have permission to scan.
 
@@ -328,6 +299,16 @@ Masscan also reads `/etc/masscan/masscan.conf`, as the CLI does, so a system-wid
 | `error` | An `Error` that has `exitCode`, `log` (masscan's last messages) and `report` |
 
 The JavaScript thread gets events in batches, so a fast scan does not make one call for each result.
+
+### Errors
+
+A failed scan rejects `scan.done` with an `Error` that has the code `ERR_MASSCAN_SCAN`. Its message holds masscan's own error lines, for example `FAIL: no ports were specified`. `exitCode` is masscan's exit code, or `1` when the module stopped the scan.
+
+- If the scan has an `error` listener, the listener gets the `Error`, and `scan.done` does not cause an unhandled rejection.
+- If the scan has no `error` listener and you do not handle `scan.done`, Node.js reports an unhandled rejection. A failed scan is never silent.
+- If one of your listeners throws, the module still delivers the remaining events and settles `scan.done`. Then it throws the error again outside the event batch, so it reaches `process.on('uncaughtException')`.
+
+`scan()` throws at once for bad options (`TypeError`), for a scan that runs already (`ERR_MASSCAN_BUSY`), and after a fatal failure (`ERR_MASSCAN_POISONED`).
 
 ## Stop a scan
 

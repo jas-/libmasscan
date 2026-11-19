@@ -32,6 +32,8 @@ scan_free(struct lm_scan *scan)
     for (i = 0; i < scan->count; i++)
         free(scan->events[i].text);
     free(scan->events);
+    if (scan->has_done)
+        free(scan->done.text);
     for (j = 0; j < scan->argc; j++)
         free(scan->argv[j]);
     free(scan->argv);
@@ -95,7 +97,14 @@ lm_complete(struct lm_scan *scan, const struct lm_run_result *result)
     /* Clear busy before queueing done, so a 'done' handler can start the next scan. */
     lm_current = NULL;
     lm_busy = 0;
-    lm_push(scan, &ev);
+    pthread_mutex_lock(&scan->lock);
+    scan->done = ev;
+    scan->has_done = 1;
+    if (!scan->notify_pending) {
+        scan->notify_pending = 1;
+        lm_notify(scan);
+    }
+    pthread_mutex_unlock(&scan->lock);
     napi_release_threadsafe_function((napi_threadsafe_function)scan->tsfn,
                                      napi_tsfn_release);
 }
@@ -252,7 +261,9 @@ call_js(napi_env env, napi_value js_callback, void *context, void *data)
 {
     struct lm_scan *scan = context;
     struct lm_event *events;
+    struct lm_event done;
     size_t count, i;
+    int has_done;
     napi_value array, undefined;
     (void)data;
 
@@ -263,14 +274,22 @@ call_js(napi_env env, napi_value js_callback, void *context, void *data)
     scan->count = 0;
     scan->capacity = 0;
     scan->notify_pending = 0;
+    done = scan->done;
+    has_done = scan->has_done;
+    scan->has_done = 0;
     pthread_mutex_unlock(&scan->lock);
 
-    if (env != NULL && js_callback != NULL && count > 0
-        && napi_create_array_with_length(env, count, &array) == napi_ok) {
+    if (env != NULL && js_callback != NULL && count + has_done > 0
+        && napi_create_array_with_length(env, count + has_done, &array) == napi_ok) {
         for (i = 0; i < count; i++) {
             napi_value obj = event_to_js(env, &events[i]);
             if (obj)
                 napi_set_element(env, array, (uint32_t)i, obj);
+        }
+        if (has_done) {
+            napi_value obj = event_to_js(env, &done);
+            if (obj)
+                napi_set_element(env, array, (uint32_t)count, obj);
         }
         napi_get_undefined(env, &undefined);
         napi_call_function(env, undefined, js_callback, 1, &array, NULL);
@@ -279,6 +298,8 @@ call_js(napi_env env, napi_value js_callback, void *context, void *data)
     for (i = 0; i < count; i++)
         free(events[i].text);
     free(events);
+    if (has_done)
+        free(done.text);
 }
 
 static void
