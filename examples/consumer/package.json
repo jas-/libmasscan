@@ -1,0 +1,12 @@
+{
+  "name": "libmasscan-consumer",
+  "private": true,
+  "description": "A separate project that installs libmasscan as a dependency and imports it",
+  "type": "module",
+  "dependencies": {
+    "libmasscan": "file:../.."
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}

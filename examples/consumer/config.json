@@ -1,0 +1,17 @@
+{
+  "$comment": "Offline check: masscan builds every packet and drops it. No root, no packets sent. The addresses are placeholders. In offline mode masscan does not open the adapter, so 'lo' works on Linux and macOS.",
+  "options": {
+    "range": ["10.0.0.0/29", "10.0.1.0/30"],
+    "exclude": ["10.0.0.7"],
+    "ports": "22,80,443,8000-8010",
+    "excludePorts": "8005",
+    "rate": 10000,
+    "wait": 0,
+    "offline": true,
+    "adapter": "lo",
+    "adapterIp": "10.9.9.9",
+    "adapterMac": "00-11-22-33-44-55",
+    "routerMac": "66-55-44-33-22-11"
+  },
+  "timeoutMs": 30000
+}
