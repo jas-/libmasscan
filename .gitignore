@@ -1,3 +1,14 @@
-build
+# node-gyp build output
+build/
+*.node
+config.gypi
+
 node_modules
 npm-debug.log
+
+# Local test harness
+vm/
+.vm/
+
+# Local consumer project
+examples/consumer/

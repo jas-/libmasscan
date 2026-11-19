@@ -1,11 +1,15 @@
 {
   "name": "libmasscan",
-  "version": "0.0.1",
-  "description": "masscan bindings for node.js",
-  "author": "Jason Gerfen <jason.gerfen@gmail.com>",
+  "version": "0.1.0",
+  "description": "In-process Node.js bindings for the masscan port scanner",
+  "main": "index.js",
+  "author": "Jason Gerfen",
+  "license": "AGPL-3.0",
   "keywords": [
     "masscan",
-    "masscan network scanner"
+    "port scanner",
+    "network scanner",
+    "n-api"
   ],
   "repository": {
     "type": "git",
@@ -14,18 +18,35 @@
   "bugs": {
     "url": "https://github.com/jas-/libmasscan/issues"
   },
+  "gypfile": true,
+  "os": [
+    "linux",
+    "darwin"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "index.js",
+    "binding.gyp",
+    "scripts/",
+    "src/*.c",
+    "src/*.h",
+    "src/shim/",
+    "src/masscan/src/",
+    "src/masscan/LICENSE",
+    "examples/",
+    "!examples/consumer/node_modules",
+    "!examples/consumer/package-lock.json"
+  ],
   "scripts": {
-    "install": "node-gyp rebuild",
-    "start": "node index.js",
-    "test": "make test"
+    "install": "node scripts/fetch-masscan.js && node-gyp rebuild",
+    "build": "node scripts/fetch-masscan.js && node-gyp rebuild -j max",
+    "prepack": "node scripts/fetch-masscan.js --check",
+    "test": "node --test test/*.test.js"
   },
-  "devDependencies": {
-    "mocha": "~1.17.0",
-    "chai": "~1.8.1"
-  },
-  "license": "AGPv3",
-  "engine": "node >= v0.10.30",
-  "dependencies": {
-    "nan": "^1.3.0"
+  "masscan": {
+    "repository": "https://github.com/robertdavidgraham/masscan",
+    "commit": "8e6b3b0c07a81e8ea61d557c06134a21a6881614"
   }
 }
