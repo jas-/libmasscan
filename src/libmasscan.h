@@ -69,8 +69,10 @@ struct lm_scan {
 
     void *tsfn;              /* napi_threadsafe_function */
 
-    int argc;
-    char **argv;
+    /* Masscan settings as name, value, name, value, ... */
+    int nparams;
+    char **params;
+    int verbosity;
 
     /* The last level-0 log lines. They become the error message. */
     char error_lines[LM_ERROR_LINES][256];
@@ -103,7 +105,7 @@ void lm_log_text(int level, const char *text);
 void lm_set_verbosity(int level);
 
 /* runner.c */
-int lm_run(int argc, char **argv, struct lm_run_result *result);
+int lm_run(int nparams, char **params, struct lm_run_result *result);
 void lm_reset_globals(void);
 void lm_request_stop(int force);
 void lm_wake_receivers(void);

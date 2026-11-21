@@ -15,45 +15,47 @@ const OFFLINE = {
   routerMac: '66-55-44-33-22-11',
 };
 
-test('toArgs maps options to masscan arguments', () => {
-  assert.deepEqual(
-    masscan.toArgs({
-      range: ['10.0.0.0/24', '10.1.0.0/24'],
-      ports: '80,443',
-      excludePorts: '8080',
-      banners: true,
-      openOnly: false,
-      rate: 1000,
-      verbose: 2,
-      args: ['--ttl', '64'],
-    }),
-    [
-      '--range=10.0.0.0/24',
-      '--range=10.1.0.0/24',
-      '--ports=80,443',
-      '--exclude-ports=8080',
-      '--banners=true',
-      '--rate=1000',
-      '-vv',
-      '--ttl',
-      '64',
-    ],
-  );
+function scanLog(options) {
+  const scan = masscan.scan({ ...OFFLINE, rate: 100000, wait: 0, ...options });
+  const logs = [];
+  scan.on('log', (l) => logs.push(l));
+  return scan.done.then((report) => ({ report, logs }));
+}
+
+test('options become masscan settings', async () => {
+  const { logs } = await scanLog({
+    range: ['10.0.0.0/30', '10.0.1.0/30'],
+    ports: '80-90',
+    excludePorts: '85',
+    openOnly: false,
+    verbose: 1,
+  });
+  assert.ok(logs.some((l) => /Scanning 8 hosts \[10 ports\/host\]/.test(l.message)));
+  assert.ok(logs.some((l) => l.level === 1), 'verbose: 1 gives level 1 log events');
 });
 
-test('toArgs keeps the original option names', () => {
-  assert.deepEqual(
-    masscan.toArgs({ iface: 'eth0', excludeports: '9000-9999' }),
-    ['--adapter=eth0', '--exclude-ports=9000-9999'],
-  );
+test('the original option names still work', async () => {
+  const { adapter, ...rest } = OFFLINE;
+  const scan = masscan.scan({ ...rest, iface: adapter, range: '10.0.0.0/30', ports: '80-90', excludeports: '85', wait: 0 });
+  const logs = [];
+  scan.on('log', (l) => logs.push(l.message));
+  await scan.done;
+  assert.ok(logs.some((m) => /Scanning 4 hosts \[10 ports\/host\]/.test(m)));
 });
 
-test('toArgs rejects bad input', () => {
-  assert.throws(() => masscan.toArgs('x'), TypeError);
-  assert.throws(() => masscan.toArgs({ 'bad name': 1 }), TypeError);
-  assert.throws(() => masscan.toArgs({ range: [{}] }), TypeError);
-  assert.throws(() => masscan.toArgs({ args: [1] }), TypeError);
-  assert.throws(() => masscan.toArgs({ verbose: -1 }), TypeError);
+test('bad options throw a TypeError before the scan starts', () => {
+  assert.throws(() => masscan.scan('x'), TypeError);
+  assert.throws(() => masscan.scan(null), TypeError);
+  assert.throws(() => masscan.scan({ 'bad name': 1 }), TypeError);
+  assert.throws(() => masscan.scan({ range: [{}] }), TypeError);
+  assert.throws(() => masscan.scan({ verbose: -1 }), TypeError);
+  assert.equal(masscan.isRunning(), false);
+});
+
+test('the module has no command-line interface', async () => {
+  assert.equal(masscan.toArgs, undefined);
+  await assert.rejects(masscan.scan({ ...OFFLINE, range: '10.0.0.0/30', ports: '80', args: ['--ttl', '64'] }).done,
+    /unknown config option: args/);
 });
 
 test('an unknown option rejects without ending the process', async () => {
@@ -118,9 +120,10 @@ test('scan.done resolves with a JSON report', async () => {
 
   assert.equal(emitted, report);
   assert.deepEqual(Object.keys(report),
-    ['startedAt', 'finishedAt', 'durationMs', 'resumeIndex', 'counts', 'results', 'banners']);
+    ['startedAt', 'finishedAt', 'durationMs', 'resumeIndex', 'counts', 'results', 'hosts', 'banners']);
   assert.deepEqual(report.counts, { results: 0, open: 0, closed: 0, banners: 0 });
   assert.deepEqual(report.results, []);
+  assert.deepEqual(report.hosts, []);
   assert.ok(!Number.isNaN(Date.parse(report.startedAt)));
   assert.ok(Date.parse(report.finishedAt) >= Date.parse(report.startedAt));
   assert.ok(report.durationMs >= 0);
@@ -128,8 +131,28 @@ test('scan.done resolves with a JSON report', async () => {
   assert.deepEqual(JSON.parse(JSON.stringify(report)), report);
 });
 
-test('collect is not passed to masscan', () => {
-  assert.deepEqual(masscan.toArgs({ ports: '80', collect: false }), ['--ports=80']);
+test('report.hosts groups the open ports of each address', async () => {
+  const scan = masscan.scan({ ...OFFLINE, range: '10.0.0.0/30', ports: '80', wait: 0 });
+  const result = (ip, port, status = 'open') => ({ type: 'result', ip, port, protocol: 'tcp', status });
+  scan._dispatch([
+    result('10.0.0.2', 8080),
+    result('10.0.0.1', 443),
+    result('10.0.0.2', 80),
+    result('10.0.0.2', 80),
+    result('10.0.0.3', 22, 'closed'),
+  ]);
+  const report = await scan.done;
+
+  assert.equal(report.results.length, 5);
+  assert.deepEqual(report.hosts, [
+    { ip: '10.0.0.2', ports: [{ port: 80, protocol: 'tcp' }, { port: 8080, protocol: 'tcp' }] },
+    { ip: '10.0.0.1', ports: [{ port: 443, protocol: 'tcp' }] },
+  ]);
+});
+
+test('collect is not passed to masscan', async () => {
+  const { report } = await scanLog({ range: '10.0.0.0/30', ports: '80', collect: false });
+  assert.deepEqual(report.results, []);
 });
 
 test('a second scan while one runs throws ERR_MASSCAN_BUSY', async () => {

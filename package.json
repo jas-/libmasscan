@@ -1,6 +1,6 @@
 {
   "name": "libmasscan",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "In-process Node.js bindings for the masscan port scanner",
   "main": "index.js",
   "author": "Jason Gerfen",

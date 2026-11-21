@@ -361,7 +361,7 @@ output_report_status(struct Output *out, time_t timestamp, int status,
 
     global_now = time(0);
 
-    /* Same filters as upstream: --open-only and --show closed. */
+    /* Same filters as upstream: open-only and show closed. */
     if (!out->is_show_closed && status == PortStatus_Closed)
         return;
     if (!out->is_show_open && status == PortStatus_Open)

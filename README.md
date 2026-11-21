@@ -1,15 +1,15 @@
 # libmasscan
 
-Node.js bindings for the [masscan](https://github.com/robertdavidgraham/masscan) port scanner. Masscan runs inside the Node.js process, and results arrive as events.
+Node.js bindings for the [masscan](https://github.com/robertdavidgraham/masscan) port scanner. Masscan runs inside the Node.js process, and the scan results come back as one JSON report.
 
 ## Requirements
 
 - Linux or macOS, with Node.js 18 or later.
-- `make`, `python3`, `gcc` and `g++` for `node-gyp`.
+- `make`, `gcc`, `g++` and `python3`. The install compiles masscan with `node-gyp`, which needs Python to make the build files.
   - Debian/Ubuntu: `apt install build-essential python3 libpcap-dev`
   - Fedora/RHEL: `dnf install gcc gcc-c++ make python3 libpcap`
   - Alpine: `apk add build-base linux-headers python3 libpcap`
-- Root, or `CAP_NET_RAW` on Linux, to send packets.
+- Root, or `CAP_NET_RAW` on Linux, to send packets. See [Run without root](#run-without-root).
 
 ## Install
 
@@ -27,7 +27,19 @@ cd libmasscan
 npm install
 ```
 
-The install gets the masscan sources and compiles them. You do not need to fetch the submodule yourself.
+The install gets the masscan sources and compiles them with `make` and `gcc`. Install the packages in [Requirements](#requirements) first, or the build fails. You do not need to fetch the submodule yourself.
+
+## Run without root
+
+Masscan sends raw packets, so a scan needs root: `sudo node your-script.js`.
+
+On Linux, you can give the Node.js binary the raw-socket capability one time. After that, scans work as an ordinary user:
+
+```sh
+sudo setcap cap_net_raw+ep "$(readlink -f "$(command -v node)")"
+```
+
+`readlink -f` is necessary because `node` is often a symbolic link, and `setcap` accepts only a regular file. The capability applies to every script that this `node` binary runs. Run the command again after a Node.js update. To remove the capability, use `sudo setcap -r` with the same path. macOS has no such capability, so use `sudo` there.
 
 ## Example use
 
@@ -60,23 +72,30 @@ const opts = {
   ],
 };
 
-const scan = masscan.scan(opts);
-
-scan.on('result', (r) => console.log(r.ip, r.port, r.status));
-
-scan.done
-  .then((report) => console.log(report.counts))
+masscan.scan(opts).done
+  .then((report) => console.log(JSON.stringify(report, null, 2)))
   .catch((err) => console.error(err.message));
 ```
 
-Any masscan option works. Write it in camelCase: `excludePorts` becomes `--exclude-ports`. The events are `result`, `banner`, `progress`, `log`, `done` and `error`. A process runs one scan at a time. For a queue around `scan()`, see `examples/scanner.js`.
+Options are masscan settings, named in camelCase. For example, `excludePorts` sets masscan's `exclude-ports`. `verbose` (0 to 10) sets the log level, and `collect: false` keeps results out of the final report. A process runs one scan at a time.
+
+The example prints one JSON report. `hosts` has one entry for each address, with its open ports. `results` has one entry for each port. The same code is in `examples/basic.js`.
+
+`examples/advanced.js` finds the interfaces that have an address, scans from each one, and prints the open ports for each address. It needs no changes before the first run:
+
+```sh
+sudo node examples/advanced.js
+```
 
 Scan only networks that you own or have permission to scan.
 
 ## Credits
 
-[masscan](https://github.com/robertdavidgraham/masscan) is the work of Robert David Graham and its contributors. libmasscan compiles it without changes.
+[masscan](https://github.com/robertdavidgraham/masscan) is the work of Robert David Graham and its contributors.
 
 ## License
 
-AGPL-3.0, the same license as masscan.
+This software is licensed under the [AGPL-3.0](LICENSE).
+
+Copyright Jason Gerfen, 2019.
+

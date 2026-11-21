@@ -16,15 +16,15 @@ function kebab(key) {
   return key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 }
 
-// Converts an options object to masscan arguments. See "Options" in the README.
-function toArgs(options = {}) {
+// Converts options to masscan setting names and values, as a flat [name, value, ...] list.
+function toParams(options) {
   if (options === null || typeof options !== 'object' || Array.isArray(options)) {
     throw new TypeError('options must be an object');
   }
 
-  const args = [];
+  const params = [];
   for (const [key, value] of Object.entries(options)) {
-    if (key === 'args' || key === 'verbose' || key === 'collect') continue;
+    if (key === 'verbose' || key === 'collect') continue;
     if (value === undefined || value === null || value === false) continue;
 
     const name = ALIASES[key] || kebab(key);
@@ -37,35 +37,28 @@ function toArgs(options = {}) {
       if (typeof item === 'object' && item !== null) {
         throw new TypeError(`option ${key} must be a string, number, boolean or array of those`);
       }
-      args.push(`--${name}=${item === true ? 'true' : String(item)}`);
+      params.push(name, item === true ? 'true' : String(item));
     }
   }
-
-  if (options.verbose) {
-    const level = Number(options.verbose);
-    if (!Number.isInteger(level) || level < 0 || level > 10) {
-      throw new TypeError('verbose must be an integer from 0 to 10');
-    }
-    if (level > 0) args.push(`-${'v'.repeat(level)}`);
-  }
-
-  if (options.args !== undefined) {
-    if (!Array.isArray(options.args) || !options.args.every((a) => typeof a === 'string')) {
-      throw new TypeError('args must be an array of strings');
-    }
-    args.push(...options.args);
-  }
-
-  return args;
+  return params;
 }
 
-// One running scan. See "Events" in the README.
+function toVerbosity(verbose = 0) {
+  const level = Number(verbose);
+  if (!Number.isInteger(level) || level < 0 || level > 10) {
+    throw new TypeError('verbose must be an integer from 0 to 10');
+  }
+  return level;
+}
+
+// One running scan. Create it with scan().
 class Scan extends EventEmitter {
-  constructor(args, { collect = true } = {}) {
+  constructor(options = {}) {
+    const params = toParams(options);
+    const verbosity = toVerbosity(options.verbose);
     super();
-    this.args = args;
     this.running = true;
-    this.collect = collect;
+    this.collect = options.collect !== false;
     this.report = {
       startedAt: new Date().toISOString(),
       finishedAt: null,
@@ -73,15 +66,17 @@ class Scan extends EventEmitter {
       resumeIndex: null,
       counts: { results: 0, open: 0, closed: 0, banners: 0 },
       results: [],
+      hosts: [],
       banners: [],
     };
+    this._hosts = new Map();
     this._started = Date.now();
     this.done = new Promise((resolve, reject) => {
       this._resolve = resolve;
       this._reject = reject;
     });
 
-    binding.start(args, (events) => this._dispatch(events));
+    binding.start(params, verbosity, (events) => this._dispatch(events));
   }
 
   _dispatch(events) {
@@ -93,7 +88,10 @@ class Scan extends EventEmitter {
         report.counts.results++;
         if (data.status === 'open') report.counts.open++;
         else if (data.status === 'closed') report.counts.closed++;
-        if (this.collect) report.results.push(data);
+        if (this.collect) {
+          report.results.push(data);
+          if (data.status === 'open') this._addHost(data);
+        }
       } else if (type === 'banner') {
         report.counts.banners++;
         if (this.collect) report.banners.push(data);
@@ -111,9 +109,23 @@ class Scan extends EventEmitter {
     for (const err of thrown) process.nextTick(() => { throw err; });
   }
 
+  // Groups the open ports of one address into one report.hosts entry.
+  _addHost({ ip, port, protocol }) {
+    let host = this._hosts.get(ip);
+    if (!host) {
+      host = { ip, ports: [] };
+      this._hosts.set(ip, host);
+      this.report.hosts.push(host);
+    }
+    if (!host.ports.some((p) => p.port === port && p.protocol === protocol)) {
+      host.ports.push({ port, protocol });
+    }
+  }
+
   _finish({ error, exitCode, resumeIndex }) {
     this.running = false;
     const { report } = this;
+    for (const host of report.hosts) host.ports.sort((a, b) => a.port - b.port);
     report.finishedAt = new Date().toISOString();
     report.durationMs = Date.now() - this._started;
     report.resumeIndex = resumeIndex ?? null;
@@ -144,11 +156,11 @@ class Scan extends EventEmitter {
 
 // One scan per process. A second call while a scan runs throws ERR_MASSCAN_BUSY.
 function scan(options = {}) {
-  return new Scan(toArgs(options), { collect: options.collect !== false });
+  return new Scan(options);
 }
 
 function isRunning() {
   return binding.isRunning();
 }
 
-module.exports = { scan, isRunning, toArgs, Scan };
+module.exports = { scan, isRunning, Scan };

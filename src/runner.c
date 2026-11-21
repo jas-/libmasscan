@@ -38,22 +38,6 @@ int masscan_initialize_adapter(struct Masscan *masscan, unsigned index,
                                macaddress_t *router_mac_ipv4,
                                macaddress_t *router_mac_ipv6);
 
-/* Upstream bug: --offline leaves link type 0, and the IPv6 template check fails on Linux. Use Ethernet. */
-int
-lm_initialize_adapter(struct Masscan *masscan, unsigned index,
-                      macaddress_t *source_mac, macaddress_t *router_mac_ipv4,
-                      macaddress_t *router_mac_ipv6)
-{
-    int err = masscan_initialize_adapter(masscan, index, source_mac,
-                                         router_mac_ipv4, router_mac_ipv6);
-    if (err == 0 && masscan->is_offline && masscan->nic[index].adapter
-        && masscan->nic[index].adapter->link_type == 0) {
-        masscan->nic[index].adapter->link_type = 1; /* PCAP_DLT_ETHERNET */
-        masscan->nic[index].link_type = 1;
-    }
-    return err;
-}
-
 static volatile int lm_has_saved_state;
 static volatile uint64_t lm_saved_index;
 
@@ -86,6 +70,70 @@ lm_pcap_breakloop(void)
         }
     }
     return fn;
+}
+
+/* Upstream bug: the ARP wait in adapter setup has a timeout, but a blocked packet read never reaches it. */
+static pthread_t lm_waker;
+static volatile int lm_waker_on;
+static struct Masscan *volatile lm_waker_scan;
+static volatile unsigned lm_waker_index;
+static lm_breakloop_fn lm_waker_fn;
+
+static void *
+lm_waker_thread(void *arg)
+{
+    (void)arg;
+    while (lm_waker_on) {
+        struct Adapter *adapter = lm_waker_scan->nic[lm_waker_index].adapter;
+        if (adapter && adapter->pcap)
+            lm_waker_fn(adapter->pcap);
+        pixie_mssleep(100);
+    }
+    return NULL;
+}
+
+static void
+lm_waker_start(struct Masscan *masscan, unsigned index)
+{
+    lm_waker_fn = lm_pcap_breakloop();
+    if (lm_waker_fn == NULL || masscan->is_offline)
+        return;
+    lm_waker_scan = masscan;
+    lm_waker_index = index;
+    lm_waker_on = 1;
+    if (pthread_create(&lm_waker, NULL, lm_waker_thread, NULL) != 0)
+        lm_waker_on = 0;
+}
+
+/* Also called when masscan exits during adapter setup, so it must be safe to call twice. */
+static void
+lm_waker_stop(void)
+{
+    if (!lm_waker_on)
+        return;
+    lm_waker_on = 0;
+    pthread_join(lm_waker, NULL);
+}
+
+int
+lm_initialize_adapter(struct Masscan *masscan, unsigned index,
+                      macaddress_t *source_mac, macaddress_t *router_mac_ipv4,
+                      macaddress_t *router_mac_ipv6)
+{
+    int err;
+
+    lm_waker_start(masscan, index);
+    err = masscan_initialize_adapter(masscan, index, source_mac,
+                                     router_mac_ipv4, router_mac_ipv6);
+    lm_waker_stop();
+
+    /* Upstream bug: offline mode leaves link type 0, and the IPv6 template check fails on Linux. Use Ethernet. */
+    if (err == 0 && masscan->is_offline && masscan->nic[index].adapter
+        && masscan->nic[index].adapter->link_type == 0) {
+        masscan->nic[index].adapter->link_type = 1; /* PCAP_DLT_ETHERNET */
+        masscan->nic[index].link_type = 1;
+    }
+    return err;
 }
 
 /* On Linux, pcap_next() can block past the wait window, and main_scan() then calls exit(). */
@@ -192,10 +240,12 @@ lm_fail(struct lm_run_result *result, const char *message)
 
 /* Upstream main() for Operation_Scan. Returns 0, or -1 with result->failed set. */
 int
-lm_run(int argc, char **argv, struct lm_run_result *result)
+lm_run(int nparams, char **params, struct lm_run_result *result)
 {
     jmp_buf trap;
     struct Masscan *volatile masscan = NULL;
+    char *no_args[] = { "masscan", NULL };
+    int i;
     int has_target_addresses;
     int has_target_ports;
     int rc;
@@ -213,6 +263,7 @@ lm_run(int argc, char **argv, struct lm_run_result *result)
         lm_exit_jmp = NULL;
         result->failed = 1;
         result->exit_code = lm_exit_code;
+        lm_waker_stop();
         lm_close_adapters(masscan);
         free(masscan);
         return -1;
@@ -239,11 +290,14 @@ lm_run(int argc, char **argv, struct lm_run_result *result)
     masscan->is_capture_cert = 1;
 
     /* Read the system exclude list, as the CLI does. */
-    if (!masscan_conf_contains("--readscan", argc, argv)
-        && access("/etc/masscan/masscan.conf", 0) == 0)
+    if (access("/etc/masscan/masscan.conf", 0) == 0)
         masscan_read_config_file(masscan, "/etc/masscan/masscan.conf");
 
-    masscan_command_line(masscan, argc, argv);
+    for (i = 0; i + 1 < nparams; i += 2)
+        masscan_set_parameter(masscan, params[i], params[i + 1]);
+
+    /* No arguments: runs only upstream's final steps (default scan type, top-ports, shard checks). */
+    masscan_command_line(masscan, 1, no_args);
 
     masscan->output.is_status_updates = 1;
 

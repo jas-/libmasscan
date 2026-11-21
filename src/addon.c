@@ -34,9 +34,9 @@ scan_free(struct lm_scan *scan)
     free(scan->events);
     if (scan->has_done)
         free(scan->done.text);
-    for (j = 0; j < scan->argc; j++)
-        free(scan->argv[j]);
-    free(scan->argv);
+    for (j = 0; j < scan->nparams; j++)
+        free(scan->params[j]);
+    free(scan->params);
     pthread_mutex_destroy(&scan->lock);
     free(scan);
 }
@@ -115,7 +115,7 @@ scan_thread(void *arg)
     struct lm_scan *scan = arg;
     struct lm_run_result result;
 
-    lm_run(scan->argc, scan->argv, &result);
+    lm_run(scan->nparams, scan->params, &result);
     lm_complete(scan, &result);
     return NULL;
 }
@@ -313,27 +313,32 @@ tsfn_finalize(napi_env env, void *finalize_data, void *hint)
 static napi_value
 Start(napi_env env, napi_callback_info info)
 {
-    size_t argc = 2;
-    napi_value args[2], resource_name;
+    size_t argc = 3;
+    napi_value args[3], resource_name;
     bool is_array;
     uint32_t length, i;
-    napi_valuetype type;
+    int32_t verbosity;
+    napi_valuetype type, vtype;
     struct lm_scan *scan;
     pthread_attr_t attr;
     pthread_t thread;
     napi_threadsafe_function tsfn;
 
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, NULL, NULL));
-    if (argc < 2) {
-        napi_throw_type_error(env, NULL, "start(args, onEvents) needs 2 arguments");
+    if (argc < 3) {
+        napi_throw_type_error(env, NULL, "start(params, verbosity, onEvents) needs 3 arguments");
         return NULL;
     }
     NAPI_CALL(env, napi_is_array(env, args[0], &is_array));
-    NAPI_CALL(env, napi_typeof(env, args[1], &type));
-    if (!is_array || type != napi_function) {
-        napi_throw_type_error(env, NULL, "start(args, onEvents) needs an array and a function");
+    NAPI_CALL(env, napi_typeof(env, args[1], &vtype));
+    NAPI_CALL(env, napi_typeof(env, args[2], &type));
+    NAPI_CALL(env, napi_get_array_length(env, args[0], &length));
+    if (!is_array || length % 2 != 0 || vtype != napi_number || type != napi_function) {
+        napi_throw_type_error(env, NULL,
+            "start(params, verbosity, onEvents) needs name/value pairs, a number and a function");
         return NULL;
     }
+    NAPI_CALL(env, napi_get_value_int32(env, args[1], &verbosity));
     if (lm_poisoned) {
         napi_throw_error(env, "ERR_MASSCAN_POISONED",
             "An earlier scan failed fatally. Restart the process before the next scan.");
@@ -353,14 +358,13 @@ Start(napi_env env, napi_callback_info info)
     }
     pthread_mutex_init(&scan->lock, NULL);
 
-    NAPI_CALL(env, napi_get_array_length(env, args[0], &length));
-    scan->argv = calloc((size_t)length + 2, sizeof(char *));
-    if (scan->argv == NULL) {
+    scan->verbosity = verbosity;
+    scan->params = calloc((size_t)length + 1, sizeof(char *));
+    if (scan->params == NULL) {
         scan_free(scan);
         napi_throw_error(env, NULL, "out of memory");
         return NULL;
     }
-    scan->argv[scan->argc++] = strdup("masscan");
     for (i = 0; i < length; i++) {
         napi_value item;
         size_t size;
@@ -369,24 +373,24 @@ Start(napi_env env, napi_callback_info info)
             || napi_typeof(env, item, &type) != napi_ok
             || type != napi_string) {
             scan_free(scan);
-            napi_throw_type_error(env, NULL, "every argument must be a string");
+            napi_throw_type_error(env, NULL, "every name and value must be a string");
             return NULL;
         }
         napi_get_value_string_utf8(env, item, NULL, 0, &size);
-        scan->argv[scan->argc] = malloc(size + 1);
-        if (scan->argv[scan->argc] == NULL) {
+        scan->params[scan->nparams] = malloc(size + 1);
+        if (scan->params[scan->nparams] == NULL) {
             scan_free(scan);
             napi_throw_error(env, NULL, "out of memory");
             return NULL;
         }
-        napi_get_value_string_utf8(env, item, scan->argv[scan->argc],
+        napi_get_value_string_utf8(env, item, scan->params[scan->nparams],
                                    size + 1, &size);
-        scan->argc++;
+        scan->nparams++;
     }
 
-    NAPI_CALL(env, napi_create_string_utf8(env, "masscan", NAPI_AUTO_LENGTH,
-                                           &resource_name));
-    if (napi_create_threadsafe_function(env, args[1], NULL, resource_name,
+    if (napi_create_string_utf8(env, "masscan", NAPI_AUTO_LENGTH,
+                                &resource_name) != napi_ok
+        || napi_create_threadsafe_function(env, args[2], NULL, resource_name,
             0, 1, scan, tsfn_finalize, scan, call_js, &tsfn) != napi_ok) {
         scan_free(scan);
         napi_throw_error(env, NULL, "cannot create the event channel");
@@ -395,7 +399,7 @@ Start(napi_env env, napi_callback_info info)
     scan->tsfn = tsfn;
 
     lm_reset_globals();
-    lm_set_verbosity(0);
+    lm_set_verbosity(scan->verbosity);
     lm_busy = 1;
     lm_current = scan;
 
