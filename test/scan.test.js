@@ -230,3 +230,54 @@ test('a throwing listener reaches uncaughtException and the scan still settles',
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /settled true/);
 });
+
+test('for await yields result and banner events, then ends with the scan', async () => {
+  const scan = masscan.scan({ ...OFFLINE, range: '10.0.0.0/30', ports: '80', wait: 0 });
+  const seen = [];
+  const loop = (async () => {
+    for await (const event of scan) seen.push(event);
+  })();
+  scan._dispatch([
+    { type: 'result', ip: '10.0.0.1', port: 80, protocol: 'tcp', status: 'open' },
+    { type: 'progress', percent: 50 },
+    { type: 'banner', ip: '10.0.0.1', port: 80, protocol: 'tcp', service: 'http', banner: 'x' },
+    { type: 'log', level: 0, message: 'not yielded' },
+  ]);
+  await loop;
+  assert.deepEqual(seen.map((e) => [e.type, e.ip]), [['result', '10.0.0.1'], ['banner', '10.0.0.1']]);
+  assert.equal(seen[0].status, 'open');
+  assert.equal(seen[1].service, 'http');
+  assert.equal(scan.listenerCount('result'), 0, 'the loop removes its listeners');
+});
+
+test('for await throws the scan error', async () => {
+  const scan = masscan.scan({ ports: '80' });
+  await assert.rejects(async () => {
+    for await (const event of scan) assert.fail(`unexpected ${event.type}`);
+  }, (err) => err.code === 'ERR_MASSCAN_SCAN' && /target IP address list empty/.test(err.message));
+});
+
+test('a break in for await stops the scan', async () => {
+  // 65536 targets at 1000 packets/second takes about 65 seconds.
+  const scan = masscan.scan({ ...OFFLINE, range: '10.0.0.0/16', ports: '80', rate: 1000, wait: 30 });
+  const started = Date.now();
+  setTimeout(() => scan._dispatch([{ type: 'result', ip: '10.0.0.1', port: 80, protocol: 'tcp', status: 'open' }]), 500);
+  for await (const event of scan) {
+    assert.equal(event.type, 'result');
+    break;
+  }
+  assert.equal(scan.running, false);
+  assert.equal(masscan.isRunning(), false);
+  assert.ok(Date.now() - started < 10000, 'stop took too long');
+  assert.equal(typeof (await scan.done).resumeIndex, 'number');
+});
+
+test('a failed scan read with for await is not an unhandled rejection', () => {
+  const r = child(`
+    (async () => {
+      try { for await (const e of masscan.scan({ ports: '80' })); } catch (err) { console.log('caught'); }
+    })();
+  `);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /caught/);
+});

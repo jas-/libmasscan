@@ -152,6 +152,30 @@ sudo node examples/advanced.js
 
 Scan only networks that you own or have permission to scan.
 
+## Results as they arrive
+
+```javascript
+const scan = masscan.scan(opts);
+
+for await (const event of scan) {
+  if (event.type === 'result' && event.status === 'open') {
+    console.log(`${event.ip}:${event.port}/${event.protocol}`);
+  } else if (event.type === 'banner') {
+    console.log(`${event.ip}:${event.port} ${event.service}: ${event.banner}`);
+  }
+}
+```
+
+### Events
+
+```javascript
+const scan = masscan.scan(opts);
+scan.on('result', (r) => console.log(r.ip, r.port, r.status));
+scan.on('progress', (p) => console.log(`${p.percent ?? 0}%`));
+scan.on('done', (report) => console.log(`${report.counts.open} open ports`));
+scan.on('error', (err) => console.error(err.message));
+```
+
 ## Credits
 
 [masscan](https://github.com/robertdavidgraham/masscan) is the work of Robert David Graham and its contributors.

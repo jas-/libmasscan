@@ -152,6 +152,83 @@ class Scan extends EventEmitter {
     if (this.running) binding.stop(Boolean(force));
     return this.done.catch(() => {});
   }
+
+  // for await (const event of scan): yields each result and banner event as it arrives,
+  // with its type. The loop ends when the scan ends, and throws if the scan fails.
+  // A break, return or throw in the loop stops the scan at once.
+  // Masscan does not wait for a slow loop, so events that are not read yet are kept in memory.
+  [Symbol.asyncIterator]() {
+    const queue = [];
+    let head = 0;
+    let waiting = null;
+    let finished = false;
+    let failure = null;
+
+    const deliver = (item) => {
+      if (waiting) {
+        const { resolve } = waiting;
+        waiting = null;
+        resolve({ value: item, done: false });
+      } else {
+        queue.push(item);
+      }
+    };
+    const onResult = (data) => deliver({ type: 'result', ...data });
+    const onBanner = (data) => deliver({ type: 'banner', ...data });
+    this.on('result', onResult);
+    this.on('banner', onBanner);
+
+    const detach = () => {
+      this.off('result', onResult);
+      this.off('banner', onBanner);
+    };
+    // The loop gets the scan error, so scan.done does not also report it as unhandled.
+    const settle = (err) => {
+      if (finished) return;
+      finished = true;
+      failure = err;
+      detach();
+      if (waiting) {
+        const { resolve, reject } = waiting;
+        waiting = null;
+        failure = null;
+        if (err) reject(err);
+        else resolve({ value: undefined, done: true });
+      }
+    };
+    this.done.then(() => settle(null), settle);
+
+    return {
+      next: () => {
+        if (head < queue.length) {
+          const value = queue[head];
+          queue[head++] = undefined;
+          if (head > 1024 && head * 2 > queue.length) {
+            queue.splice(0, head);
+            head = 0;
+          }
+          return Promise.resolve({ value, done: false });
+        }
+        if (finished) {
+          const err = failure;
+          failure = null;
+          return err ? Promise.reject(err) : Promise.resolve({ value: undefined, done: true });
+        }
+        return new Promise((resolve, reject) => { waiting = { resolve, reject }; });
+      },
+      return: async () => {
+        const wasRunning = !finished;
+        finished = true;
+        failure = null;
+        queue.length = 0;
+        head = 0;
+        detach();
+        if (wasRunning) await this.stop({ force: true });
+        return { value: undefined, done: true };
+      },
+      [Symbol.asyncIterator]() { return this; },
+    };
+  }
 }
 
 // One scan per process. A second call while a scan runs throws ERR_MASSCAN_BUSY.
