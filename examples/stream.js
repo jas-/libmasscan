@@ -1,6 +1,6 @@
 'use strict';
 
-// Prints each open port and banner as masscan finds it, instead of one report at the end.
+// Prints each result and banner as one JSON line when masscan finds it, instead of one report at the end.
 // Change `range` to a network that you may scan, then run it as root:
 //
 //   sudo node examples/stream.js
@@ -18,18 +18,11 @@ const scan = masscan.scan({
 process.once('SIGINT', () => scan.stop({ force: true }));
 
 (async () => {
-  let open = 0;
   for await (const event of scan) {
-    if (event.type === 'result' && event.status === 'open') {
-      open++;
-      console.log(`open    ${event.ip}:${event.port}/${event.protocol}`);
-    } else if (event.type === 'banner') {
-      console.log(`banner  ${event.ip}:${event.port} ${event.service}: ${JSON.stringify(event.banner)}`);
-    }
+    console.log(JSON.stringify(event));
   }
   const report = await scan.done;
-  console.log(`${open} open ports in ${report.durationMs} ms`);
-  if (report.resumeIndex !== null) console.log(`stopped at index ${report.resumeIndex}`);
+  console.log(JSON.stringify({ counts: report.counts, durationMs: report.durationMs, resumeIndex: report.resumeIndex }));
 })().catch((err) => {
   console.error(err.message);
   process.exitCode = 1;

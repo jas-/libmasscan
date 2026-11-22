@@ -76,6 +76,8 @@ The Xcode command line tools supply the compiler, `make` and `python3`. macOS in
 
 ## Install
 
+![npm install libmasscan](docs/install.gif)
+
 From npm:
 
 ```sh
@@ -105,6 +107,8 @@ sudo setcap cap_net_raw+ep "$(readlink -f "$(command -v node)")"
 `readlink -f` is necessary because `node` is often a symbolic link, and `setcap` accepts only a regular file. The capability applies to every script that this `node` binary runs. Run the command again after a Node.js update. To remove the capability, use `sudo setcap -r` with the same path. macOS has no such capability, so use `sudo` there.
 
 ## Example use
+
+![JSON report](docs/default.gif)
 
 ```javascript
 const masscan = require('libmasscan');
@@ -154,25 +158,25 @@ Scan only networks that you own or have permission to scan.
 
 ## Results as they arrive
 
+![for await scan events](docs/stream.gif)
+
 ```javascript
 const scan = masscan.scan(opts);
 
 for await (const event of scan) {
-  if (event.type === 'result' && event.status === 'open') {
-    console.log(`${event.ip}:${event.port}/${event.protocol}`);
-  } else if (event.type === 'banner') {
-    console.log(`${event.ip}:${event.port} ${event.service}: ${event.banner}`);
-  }
+  console.log(JSON.stringify(event));
 }
 ```
 
 ### Events
 
+![scan event listeners](docs/events.gif)
+
 ```javascript
 const scan = masscan.scan(opts);
-scan.on('result', (r) => console.log(r.ip, r.port, r.status));
-scan.on('progress', (p) => console.log(`${p.percent ?? 0}%`));
-scan.on('done', (report) => console.log(`${report.counts.open} open ports`));
+scan.on('result', (result) => console.log(JSON.stringify(result)));
+scan.on('progress', (progress) => console.log(JSON.stringify(progress)));
+scan.on('done', (report) => console.log(JSON.stringify(report.counts)));
 scan.on('error', (err) => console.error(err.message));
 ```
 
