@@ -2,14 +2,77 @@
 
 Node.js bindings for the [masscan](https://github.com/robertdavidgraham/masscan) port scanner. Masscan runs inside the Node.js process, and the scan results come back as one JSON report.
 
+[![npm](https://img.shields.io/npm/v/libmasscan.svg)](https://npmjs.com/package/libmasscan) [![CI](https://github.com/jas-/libmasscan/actions/workflows/ci.yml/badge.svg)](https://github.com/jas-/libmasscan/actions/workflows/ci.yml) ![Downloads](https://img.shields.io/npm/dm/libmasscan.svg) [![Known Vulnerabilities](https://snyk.io/test/github/jas-/libmasscan/badge.svg?targetFile=package.json)](https://snyk.io/test/github/jas-/libmasscan?targetFile=package.json)
+
 ## Requirements
 
 - Linux or macOS, with Node.js 18 or later.
 - `make`, `gcc`, `g++` and `python3`. The install compiles masscan with `node-gyp`, which needs Python to make the build files.
-  - Debian/Ubuntu: `apt install build-essential python3 libpcap-dev`
-  - Fedora/RHEL: `dnf install gcc gcc-c++ make python3 libpcap`
-  - Alpine: `apk add build-base linux-headers python3 libpcap`
+- `libpcap`. Masscan loads it when a scan starts.
 - Root, or `CAP_NET_RAW` on Linux, to send packets. See [Run without root](#run-without-root).
+
+Example package requirements.
+
+<details>
+<summary>Debian, Ubuntu (apt)</summary>
+
+```sh
+sudo apt-get install build-essential python3 libpcap-dev nodejs npm
+```
+</details>
+
+<details>
+<summary>Fedora, RHEL, CentOS, Rocky, AlmaLinux (dnf)</summary>
+
+```sh
+sudo dnf install gcc gcc-c++ make python3 tar libpcap nodejs npm
+```
+</details>
+
+<details>
+<summary>openSUSE (zypper)</summary>
+
+```sh
+sudo zypper install gcc gcc-c++ make python3 libpcap1 nodejs npm
+```
+</details>
+
+<details>
+<summary>Arch Linux, Manjaro (pacman)</summary>
+
+```sh
+sudo pacman -S --needed base-devel python libpcap nodejs npm
+```
+</details>
+
+<details>
+<summary>Gentoo (emerge)</summary>
+
+```sh
+sudo emerge --ask dev-lang/python net-libs/libpcap net-libs/nodejs
+```
+
+The compiler and `make` are part of the base system.
+</details>
+
+<details>
+<summary>Alpine (apk)</summary>
+
+```sh
+sudo apk add build-base linux-headers python3 libpcap nodejs npm
+```
+</details>
+
+<details>
+<summary>macOS</summary>
+
+```sh
+xcode-select --install
+brew install node
+```
+
+The Xcode command line tools supply the compiler, `make` and `python3`. macOS includes `libpcap`.
+</details>
 
 ## Install
 
