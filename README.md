@@ -188,5 +188,5 @@ scan.on('error', (err) => console.error(err.message));
 
 This software is licensed under the [AGPL-3.0](LICENSE).
 
-Copyright Jason Gerfen, 2019.
+Copyright Jason Gerfen, 2014.
 
